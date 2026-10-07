@@ -397,9 +397,11 @@ export class ResponsiveDialogRenderer implements IAction {
             this.setTopToChildDialog(this.customResponsiveDlg.element);
             if (this.parent.enableAdaptiveUI && this.parent.filterSettings && (this.parent.filterSettings.type === 'CheckBox'
             || this.parent.filterSettings.type === 'Excel') && this.parent.filterSettings.enableInfiniteScrolling
-            && this.parent.filterSettings.loadingIndicator === 'Shimmer') {
+            && this.parent.filterSettings.loadingIndicator === 'Shimmer' && this.action === ResponsiveDialogAction.isFilter) {
                 const filterBase: CheckBoxFilterBase = this.parent.filterSettings.type === 'CheckBox' ? this.parent.filterModule.filterModule.checkBoxBase : this.parent.filterModule.filterModule.excelFilterBase;
-                filterBase.showMask();
+                if (!isNullOrUndefined(filterBase)) {
+                    filterBase.showMask();
+                }
             }
         }
     }

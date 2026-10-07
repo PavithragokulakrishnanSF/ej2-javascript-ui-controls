@@ -1,3 +1,4 @@
+import { FormulaValue } from '../actions/formula';
 import { ColumnModel, AggregateColumnModel } from '../models/models';
 
 /**
@@ -17,6 +18,8 @@ export type ValueAccessor = (field: string, data: Object, column: ColumnModel) =
 export type HeaderValueAccessor = (field: string, column: ColumnModel) => Object;
 
 export type SortComparer = (x: ValueType, y: ValueType) => number;
+
+export type FilterComparer = (value: ValueType, filterValue: ValueType, operator?: string) => FormulaValue | Object;
 
 export type CustomSummaryType = (data: Object[] | Object, column: AggregateColumnModel) => Object;
 

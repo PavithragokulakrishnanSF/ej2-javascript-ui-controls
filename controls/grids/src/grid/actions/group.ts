@@ -1100,10 +1100,18 @@ export class Group implements IAction {
         let firstContentCellIndex: number[] = [0, 0];
         if (this.parent.frozenRows > 0) {
             focusModule.setActive(false);
-            const rowIndex: number = (this.parent.element.querySelector('.e-gridheader tbody').firstChild as HTMLTableRowElement).rowIndex;
+            const tbody: Element = this.parent.element.querySelector('.e-gridheader tbody');
+            if (isNullOrUndefined(tbody) || isNullOrUndefined(tbody.firstChild)) {
+                return;
+            }
+            const rowIndex: number = (tbody.firstChild as HTMLTableRowElement).rowIndex;
             firstContentCellIndex = [rowIndex, 0];
         } else {
             focusModule.setActive(true);
+        }
+        if (isNullOrUndefined(focusModule.active) ||
+            isNullOrUndefined(focusModule.active.matrix)) {
+            return;
         }
         if (focusModule.active.matrix.matrix[firstContentCellIndex[0]][firstContentCellIndex[1]] === 0) {
             firstContentCellIndex = findCellIndex(focusModule.active.matrix.matrix, firstContentCellIndex, true);

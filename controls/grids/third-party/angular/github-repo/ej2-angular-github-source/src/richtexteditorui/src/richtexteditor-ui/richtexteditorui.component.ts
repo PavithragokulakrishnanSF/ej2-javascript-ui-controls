@@ -6,7 +6,7 @@ import { RichTextEditorUI } from '@syncfusion/ej2-richtexteditor-ui';
 
 
 export const inputs: string[] = ['backgroundColor','cssClass','enable','enablePersistence','enableRtl','fontColor','fontFamily','fontSize','format','height','htmlAttributes','imageSettings','interactionSettings','keyBindings','linkSettings','listSettings','locale','placeholder','quickToolbarSettings','readonly','saveInterval','slashCommandSettings','tableSettings','toolbarSettings','undoRedoSteps','undoRedoTimer','value','valueFormat','width'];
-export const outputs: string[] = ['actionBegin','actionComplete','blurred','change','created','destroyed','focused','itemClick','slashCommanditemSelect','updatedToolbarStatus','beforeDialogClose','beforeDialogOpen','beforeFileDrop','beforeFileUpload','beforePopupClose','beforePopupOpen','fileRemoving','fileSelected','fileUploadFailed','fileUploadSuccess','fileUploading','resize','resizeStop','resizing','valueChange'];
+export const outputs: string[] = ['actionBegin','actionComplete','beforeDialogClose','beforeDialogOpen','beforeFileDrop','beforeFileUpload','beforePopupClose','beforePopupOpen','blur','change','created','destroyed','fileRemoving','fileSelected','fileUploadFailed','fileUploadSuccess','fileUploading','focus','resize','resizeStop','resizing','valueChange'];
 export const twoWays: string[] = ['value'];
 
 /**
@@ -39,25 +39,22 @@ export class RichTextEditorUIComponent extends RichTextEditorUI implements IComp
     public declare tagObjects: any;
 	declare actionBegin: any;
 	declare actionComplete: any;
-	declare blurred: any;
-	declare change: any;
-	declare created: any;
-	declare destroyed: any;
-	declare focused: any;
-	declare itemClick: any;
-	declare slashCommanditemSelect: any;
-	declare updatedToolbarStatus: any;
 	declare beforeDialogClose: any;
 	declare beforeDialogOpen: any;
 	declare beforeFileDrop: any;
 	declare beforeFileUpload: any;
 	declare beforePopupClose: any;
 	declare beforePopupOpen: any;
+	declare blur: any;
+	declare change: any;
+	declare created: any;
+	declare destroyed: any;
 	declare fileRemoving: any;
 	declare fileSelected: any;
 	declare fileUploadFailed: any;
 	declare fileUploadSuccess: any;
 	declare fileUploading: any;
+	declare focus: any;
 	declare resize: any;
 	declare resizeStop: any;
 	declare resizing: any;

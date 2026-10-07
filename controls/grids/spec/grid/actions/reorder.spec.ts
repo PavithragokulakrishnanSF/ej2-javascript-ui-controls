@@ -2553,3 +2553,77 @@ describe('EJ2-1051778: Improve Stacked Header Column Reordering Coverage', () =>
             gridObj = null;
         });
     });
+
+describe('EJ2-1051778: Improve Stacked Header Column Reordering Coverage', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid({
+            dataSource: data,
+            allowReordering: true,
+            columns: [
+                {
+                    headerText: 'Order Details',
+                    columns: [
+                        {
+                            headerText: 'ParentA',
+                            columns: [
+                                { field: 'OrderID', headerText: 'Order ID' },
+                                { field: 'OrderDate', headerText: 'Order Date' }
+                            ]
+                        },
+                        {
+                            headerText: 'ParentB',
+                            columns: [
+                                { field: 'CustomerID', headerText: 'Customer ID' },
+                                { field: 'EmployeeID', headerText: 'Employee ID' }
+                            ]
+                        }
+                    ]
+                },
+                { field: 'Freight', headerText: 'Freight' }
+            ]
+        }, done);
+    });
+
+    it('should dispatch the same-group, child-to-root, and cross-group stacked-header helpers', () => {
+        const reorderModule: any = gridObj.reorderModule;
+        reorderModule.isLeftDrop = false;
+
+        const sameSource: Column = gridObj.getColumnByField('OrderID');
+        const sameTarget: Column = gridObj.getColumnByField('OrderDate');
+        const sameSourceParent: Column = reorderModule.getColParent(sameSource, gridObj.columns as Column[]);
+        const sameTargetParent: Column = reorderModule.getColParent(sameTarget, gridObj.columns as Column[]);
+        const sameColumns: Column[] = sameSourceParent.columns as Column[];
+        expect(sameSourceParent).toBe(sameTargetParent);
+        expect(() => {
+            reorderModule.reorderStackedHeader(0, sameSource, sameSourceParent, sameColumns, sameTarget, sameTargetParent, 0);
+        }).not.toThrow();
+
+        const rootSource: Column = gridObj.getColumnByField('CustomerID');
+        const rootSourceParent: Column = reorderModule.getColParent(rootSource, gridObj.columns as Column[]);
+        const rootSourceColumns: Column[] = rootSourceParent.columns as Column[];
+        const rootTarget: Column = gridObj.getColumnByField('Freight');
+        const rootTargetParent: Column = reorderModule.getColParent(rootTarget, gridObj.columns as Column[]);
+        expect(rootTargetParent).toBeUndefined();
+        expect(() => {
+            reorderModule.reorderStackedHeader(0, rootSource, rootSourceParent, rootSourceColumns, rootTarget, rootTargetParent, 0);
+        }).not.toThrow();
+
+        const acrossSource: Column = gridObj.getColumnByField('OrderID');
+        const acrossTarget: Column = gridObj.getColumnByField('CustomerID');
+        const acrossSourceParent: Column = reorderModule.getColParent(acrossSource, gridObj.columns as Column[]);
+        const acrossTargetParent: Column = reorderModule.getColParent(acrossTarget, gridObj.columns as Column[]);
+        const acrossSourceColumns: Column[] = acrossSourceParent.columns as Column[];
+        expect(acrossSourceParent).not.toBe(acrossTargetParent);
+        expect(() => {
+            reorderModule.reorderStackedHeader(0, acrossSource, acrossSourceParent, acrossSourceColumns,
+                acrossTarget, acrossTargetParent, 0);
+        }).not.toThrow();
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+});
+

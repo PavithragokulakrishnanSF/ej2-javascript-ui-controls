@@ -5,8 +5,8 @@ import { FormRenderer } from '@syncfusion/ej2-form-renderer';
 import { CustomWidgetSettingsDirective } from './customwidgetsettings.directive';
 
 export const inputs: string[] = ['className','customWidgetSettings','dataModel','enableHtmlSanitizer','enablePersistence','enableRtl','layout','locale','schema'];
-export const outputs: string[] = ['buttonClick','change','created','failure','submit'];
-export const twoWays: string[] = [];
+export const outputs: string[] = ['buttonClick','change','created','failure','submit','dataModelChange'];
+export const twoWays: string[] = ['dataModel'];
 
 /**
  * Represents the Angular FormRenderer Component.
@@ -33,7 +33,8 @@ export class FormRendererComponent extends FormRenderer implements IComponentBas
 	declare change: any;
 	declare created: any;
 	declare failure: any;
-	public declare submit: any;
+	declare submit: any;
+	public declare dataModelChange: any;
     public declare childCustomWidgetSettings: QueryList<CustomWidgetSettingsDirective>;
     public tags: string[] = ['customWidgetSettings'];
 

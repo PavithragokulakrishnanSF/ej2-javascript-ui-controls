@@ -245,8 +245,9 @@ export class Edit implements IAction {
      */
     public checkLastRow(tr: Element, args?: { row?: Element, requestType?: string }): void {
         const checkLastRow: boolean = this.isLastRow;
-        if (this.parent.height !== 'auto' && this.parent.editSettings.newRowPosition === 'Bottom' && args && args.requestType === 'add' &&
-            (this.parent.getContent().firstElementChild as HTMLElement).offsetHeight > this.parent.getContentTable().scrollHeight) {
+        if (this.parent.height !== 'auto' && args && args.requestType === 'add' && ((this.parent.editSettings.newRowPosition === 'Bottom' &&
+            (this.parent.getContent().firstElementChild as HTMLElement).offsetHeight > this.parent.getContentTable().scrollHeight) ||
+            this.parent.currentViewData.length === 0)) {
             addClass([].slice.call(tr.getElementsByClassName(literals.rowCell)), 'e-lastrowadded');
         } else if (checkLastRow && tr && tr.classList) {
             addClass([].slice.call(tr.getElementsByClassName(literals.rowCell)), 'e-lastrowcell');

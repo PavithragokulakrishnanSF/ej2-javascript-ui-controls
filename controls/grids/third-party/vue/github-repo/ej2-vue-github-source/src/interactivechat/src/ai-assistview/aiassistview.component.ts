@@ -134,17 +134,11 @@ export let AIAssistViewComponent: DefineVueComponent<AIAssistViewModel> =  vueDe
         addPromptResponse(outputResponse: string | Object, isFinalUpdate: boolean, telemetryData?: Object): void {
             return this.ej2Instances.addPromptResponse(outputResponse, isFinalUpdate, telemetryData);
         },
-        cancelPrompt(): void {
-            return this.ej2Instances.cancelPrompt();
-        },
         destroy(): void {
             return this.ej2Instances.destroy();
         },
         executePrompt(prompt: string): void {
             return this.ej2Instances.executePrompt(prompt);
-        },
-        failPrompt(): void {
-            return this.ej2Instances.failPrompt();
         },
         registerToolUI(tool: Object): void {
             return this.ej2Instances.registerToolUI(tool);
@@ -172,10 +166,8 @@ export type AIAssistViewComponent = typeof ComponentBase & {
         [key: string]: Object;
     }, successHandler?: Function): void;
     addPromptResponse(outputResponse: string | Object, isFinalUpdate: boolean, telemetryData?: Object): void;
-    cancelPrompt(): void;
     destroy(): void;
     executePrompt(prompt: string): void;
-    failPrompt(): void;
     registerToolUI(tool: Object): void;
     scrollToBottom(): void
 };

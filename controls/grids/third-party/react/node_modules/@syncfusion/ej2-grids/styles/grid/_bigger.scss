@@ -842,12 +842,18 @@
     .e-row {
       .e-input-group .e-input.e-field,
       .e-input-focus .e-input.e-field,
-      .e-field.e-formula-edit {
+      .e-field.e-formula-edit.e-input.e-input-group {
         @include grid-edit-input-styles($grid-bigger-font-size, $grid-edit-input-bigger-padding-bottom, $grid-edit-input-bigger-padding-top);
       }
 
-      .e-field.e-formula-edit {
+      td.e-rowcell .e-field.e-formula-edit.e-formula-edit.e-input.e-input-group {
         height: $formula-edit-bigger-height;
+        padding-left: $formula-edit-bigger-padding-left;
+        padding-top: $formula-edit-bigger-padding-top;
+
+        &.ralign {
+          padding-right: $formula-edit-bigger-padding-right;
+        }
       }
 
       .e-input-group {

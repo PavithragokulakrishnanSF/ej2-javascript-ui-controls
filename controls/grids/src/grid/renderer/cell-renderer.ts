@@ -69,7 +69,8 @@ export class CellRenderer implements ICellRenderer<Column> {
     }
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public evaluate(node: Element, cell: Cell<Column>, data: Object, attributes?: Object, fData?: Object, isEdit?: boolean): boolean {
+    public evaluate(node: Element, cell: Cell<Column>, data: Object, attributes?: Object, fData?: Object,
+                    isEdit?: boolean, rowNumber?: number): boolean {
         let result: Element[];
         if (cell.column.template) {
             const isReactCompiler: boolean = this.parent.isReact && typeof (cell.column.template) !== 'string' && !(cell.column.template.prototype && cell.column.template.prototype.CSPTemplate);
@@ -80,13 +81,16 @@ export class CellRenderer implements ICellRenderer<Column> {
             const dummyData: Object = extendObjWithFn({}, data, { [foreignKeyData]: fData, column: cell.column });
             const templateID: string = this.parent.element.id + cell.column.uid;
             const str: string = 'isStringTemplate';
+            const copied: object = { 'index': attributes[literals[0]] };
+            if (rowNumber > 0) {
+                (copied as { rowNumber?: number }).rowNumber = rowNumber;
+            }
             if (isReactCompiler || isReactChild || isReactPrintGrid) {
-                const copied: Object = { 'index': attributes[literals[0]] };
                 cell.column.getColumnTemplate()(
                     extend(copied, dummyData), this.parent, 'columnTemplate', templateID, this.parent[`${str}`], null, node);
             } else {
                 result = cell.column.getColumnTemplate()(
-                    extend({ 'index': attributes[literals[0]] }, dummyData), this.parent, 'template', templateID, this.parent[`${str}`], undefined, undefined, this.parent['root']);
+                    extend(copied, dummyData), this.parent, 'template', templateID, this.parent[`${str}`], undefined, undefined, this.parent['root']);
             }
             if (!isReactCompiler && !isReactChild && !isReactPrintGrid) {
                 appendChildren(node, result);
@@ -206,21 +210,22 @@ export class CellRenderer implements ICellRenderer<Column> {
         let value: Object | FormulaValue = cell.isForeignKey ? this.getValue(column.foreignKeyValue, fData, column) :
             this.getValue(column.field, data, column);
 
+        let rowNumber: number = 0;
         if (!isNullOrUndefined(column) && column.type === 'rownumber') {
             const index: number = parseInt(attributes && attributes['data-index'] as string, 10);
-            value = index + 1;
+            rowNumber = index + 1;
             if (this.parent.allowPaging) {
                 const pageSize: number = this.parent.pageSettings.pageSize || 0;
                 const currentPage: number = this.parent.pageSettings.currentPage || 1;
                 const pageOffset: number = (currentPage - 1) * pageSize;
-                value = index + pageOffset + 1;
+                rowNumber = index + pageOffset + 1;
             }
+            value = rowNumber;
         }
         if (this.parent.formulaModule && column.allowFormula && !isEdit) {
             const isRawFormula: boolean = typeof value === 'string' && value.trim().startsWith('=');
             if (isRawFormula) {
                 const primaryKey: string = this.parent.getPrimaryKeyFieldNames()[0];
-                this.parent.setCellFormula(data[`${primaryKey}`], column.field, value as string);
                 value = this.parent.getFormulaValue(data[`${primaryKey}`], column.field);
             }
             if (!isNullOrUndefined((this.parent.getHeaderTable() as HTMLElement).querySelectorAll('.e-header-col-ref')) &&
@@ -250,7 +255,7 @@ export class CellRenderer implements ICellRenderer<Column> {
         const fromFormatter: Object = this.invokeFormatter(column, value, data);
 
         innerHtml = !isNullOrUndefined(column.formatter) ? isNullOrUndefined(fromFormatter) ? '' : fromFormatter.toString() : innerHtml;
-        if (this.evaluate(node, cell, data, attributes, fData, isEdit) && column.type !== 'checkbox') {
+        if (this.evaluate(node, cell, data, attributes, fData, isEdit, rowNumber) && column.type !== 'checkbox') {
             this.appendHtml(node, this.parent.sanitize(innerHtml), column.getDomSetter ? column.getDomSetter() : 'innerHTML');
         } else if (column.type === 'checkbox') {
             node.classList.add(literals.gridChkBox);
@@ -365,6 +370,7 @@ export class CellRenderer implements ICellRenderer<Column> {
         if (cell.isTemplate) {
             classes.push('e-templatecell');
         }
+
         if ((<{ type?: string }>cell.column).type === 'rownumber') {
             classes.push(literals.rowNumberCell);
         }

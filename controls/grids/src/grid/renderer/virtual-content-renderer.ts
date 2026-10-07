@@ -99,6 +99,7 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
     public firstCellFocus: boolean = false;
     private prevPage: number = 0;
     private prevCurrentInfo: VirtualInfo = {};
+    private lastPageDeleteScrollTop: number = -1;
 
     constructor(parent: IGrid, locator?: ServiceLocator) {
         super(parent, locator);
@@ -509,8 +510,15 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
             this.isBottomNotify = false;
             this.parent.getContent().firstElementChild.scrollTop = this.offsets[this.offsetKeys.length - 1];
         }
+        if (this.lastPageDeleteScrollTop > 0 && this.parent.pageSettings.currentPage === lastPage) {
+            this.parent.getContent().firstElementChild.scrollTop = this.lastPageDeleteScrollTop;
+            this.lastPageDeleteScrollTop = -1;
+        }
         if (this.parent.pageSettings.currentPage > 1 && (this.parent.pageSettings.currentPage + 1 === lastPage ||
             this.parent.pageSettings.currentPage === lastPage) && blocks.length === 2 && e.requestType === 'delete') {
+            if (this.parent.pageSettings.currentPage + 1 === lastPage) {
+                this.lastPageDeleteScrollTop = this.parent.getContent().firstElementChild.scrollTop;
+            }
             this.parent.getContent().firstElementChild.scrollTop = this.offsets[this.offsetKeys.length - 1];
         }
         if (lastPage !== 1 && (this.parent.pageSettings.currentPage === lastPage) && blocks.length === 1) {
@@ -1367,7 +1375,7 @@ export class VirtualContentRenderer extends ContentRender implements IRenderer {
         if (!(this.parent.enableVirtualization || this.parent.enableColumnVirtualization)) {
             return;
         }
-        if (args.requestType === 'delete' || args.requestType === 'refresh') {
+        if (args.requestType === 'delete' || args.requestType === 'refresh' || args.requestType === 'searching' || args.requestType === 'filtering') {
             this.prevPage = -1;
         }
         const editRequestTypes: string[] = ['delete', 'save', 'cancel'];

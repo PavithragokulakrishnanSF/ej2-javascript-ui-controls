@@ -12,7 +12,7 @@ import { SheetDirective, SheetsDirective } from './sheets.directive';
 import { DefinedNameDirective, DefinedNamesDirective } from './definednames.directive';
 import { SpreadsheetComponent } from './spreadsheet.component';
 import { SpreadsheetModule } from './spreadsheet.module';
-import {Clipboard, Edit, KeyboardNavigation, KeyboardShortcut, Selection, ContextMenu, FormulaBar, Ribbon, Save, Open, SheetTabs, DataBind, CellFormat, NumberFormat, Formula, AIAssist, WebMcpAdapter} from '@syncfusion/ej2-spreadsheet'
+import {Clipboard, Edit, KeyboardNavigation, KeyboardShortcut, Selection, ContextMenu, FormulaBar, Ribbon, Save, Open, SheetTabs, DataBind, CellFormat, NumberFormat, Formula, AIAssist, WebMcpAdapter, CollaborativeEditingHandler} from '@syncfusion/ej2-spreadsheet'
 
 
 export const ClipboardService: ValueProvider = { provide: 'SpreadsheetClipboard', useValue: Clipboard};
@@ -32,6 +32,7 @@ export const NumberFormatService: ValueProvider = { provide: 'SpreadsheetNumberF
 export const FormulaService: ValueProvider = { provide: 'SpreadsheetFormula', useValue: Formula};
 export const AIAssistService: ValueProvider = { provide: 'SpreadsheetAIAssist', useValue: AIAssist};
 export const WebMcpAdapterService: ValueProvider = { provide: 'SpreadsheetWebMcpAdapter', useValue: WebMcpAdapter};
+export const CollaborativeEditingHandlerService: ValueProvider = { provide: 'SpreadsheetCollaborativeEditingHandler', useValue: CollaborativeEditingHandler};
 
 /**
  * NgModule definition for the Spreadsheet component with providers.
@@ -58,7 +59,8 @@ export const WebMcpAdapterService: ValueProvider = { provide: 'SpreadsheetWebMcp
         NumberFormatService,
         FormulaService,
         AIAssistService,
-        WebMcpAdapterService
+        WebMcpAdapterService,
+        CollaborativeEditingHandlerService
     ]
 })
 export class SpreadsheetAllModule { }

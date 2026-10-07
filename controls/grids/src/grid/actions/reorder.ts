@@ -180,43 +180,148 @@ export class Reorder implements IAction {
         return isActionPrevent(gObj);
     }
 
-    private reorderStackedHeader(destIndex: number, column: Column, parent: Column, cols: Column[],
-                                 targetColumn: Column, targetParent: Column, srcIdx: number): void {
-        const targetRootIndex: number = targetColumn ? inArray(targetColumn, this.parent.columns as Column[]) : -1;
-        const adjacentParentIndex: number = targetRootIndex + (this.isLeftDrop ? -1 : 1);
-        const adjacentParent: Column = adjacentParentIndex > -1 &&
-            adjacentParentIndex < (this.parent.columns as Column[]).length ?
-            (this.parent.columns as Column[])[parseInt(adjacentParentIndex.toString(), 10)] : undefined;
-        cols.splice(srcIdx, 1);
-        const targetRoot: Column = targetParent ? targetParent : targetColumn;
-        let insertIndex: number = inArray(targetRoot, this.parent.columns as Column[]);
-        if (!this.isLeftDrop) {
-            insertIndex++;
+    private createStackedColumn(column: Column, child: Column): Column {
+        const columnModel: Column = extend({}, column) as Column;
+        delete (columnModel as { uid?: string }).uid;
+        columnModel.columns = [child];
+        return new Column(columnModel);
+    }
+
+    private getColumnHierarchy(column: Column): Column[] {
+        const hierarchyColumns: Column[] = [];
+        let current: Column = column;
+        while (current) {
+            hierarchyColumns.push(current);
+            current = this.getColParent(current, this.parent.columns as Column[]);
         }
-        const existingParent: Column = targetParent ||
-            (adjacentParent && adjacentParent !== parent && adjacentParent.columns &&
-                adjacentParent.headerText === parent.headerText ? adjacentParent : undefined);
-        if (existingParent && parent.headerText === existingParent.headerText) {
-            const targetIndex: number = targetParent ? destIndex :
-                (this.isLeftDrop ? (existingParent.columns as Column[]).length : 0);
-            (existingParent.columns as Column[]).splice(targetIndex, 0, column);
-        } else {
-            const stackedColumn: Column = new Column({ headerText: parent.headerText, columns: [column], visible: true });
-            (this.parent.columns as Column[]).splice(insertIndex, 0, stackedColumn);
+        return hierarchyColumns;
+    }
+
+    private cleanupEmptyParentColumn(parent: Column): void {
+        if (!parent || !parent.columns || parent.columns.length !== 0) {
+            return;
+        }
+        const grandParent: Column = this.getColParent(parent, this.parent.columns as Column[]) as Column;
+        if (grandParent) {
+            const parentIndex: number = inArray(parent, grandParent.columns as Column[]);
+            if (parentIndex > -1) {
+                grandParent.columns.splice(parentIndex, 1);
+            }
+        }
+        else {
+            const index: number = inArray(parent, this.parent.columns as Column[]);
+            if (index > -1) {
+                (this.parent.columns as Column[]).splice(index, 1);
+            }
         }
     }
 
-    private iterateStackedHeaders(): void {
-        const rootCols: Column[] = this.parent.columns as Column[];
-        for (let i: number = 0; i < rootCols.length - 1; i++) {
-            const current: Column = rootCols[parseInt(i.toString(), 10)];
-            const next: Column = rootCols[parseInt((i + 1).toString(), 10)];
-            if (current && next && current.columns && next.columns &&
-                current.headerText === next.headerText) {
-                current.columns = [...(current.columns as Column[]), ...(next.columns as Column[])];
-                rootCols.splice(i + 1, 1);
-                i--;
+    private reorderStackedHeader(destIndex: number, column: Column, parentColumn: Column, columns: Column[],
+                                 targetColumn: Column, targetParent: Column, srcIdx: number): void {
+        if (parentColumn && targetParent && targetParent.headerText === parentColumn.headerText) {
+            this.reorderWithinStackedColumn(destIndex, column, parentColumn, columns, targetColumn, targetParent, srcIdx);
+            return;
+        }
+        if (parentColumn && !targetParent) {
+            this.reorderStackedColumnToRoot(destIndex, column, parentColumn, columns, targetColumn, targetParent, srcIdx);
+            return;
+        }
+        this.reorderBetweenStackedColumns(destIndex, column, parentColumn, columns, targetColumn, targetParent, srcIdx);
+    }
+
+    private reorderWithinStackedColumn(destIndex: number, column: Column, parentColumn: Column, columns: Column[],
+                                       targetColumn: Column, targetParent: Column, srcIdx: number): void {
+        const destinationColumns: Column[] = targetParent.columns as Column[];
+        let targetIndex: number = inArray(targetColumn, destinationColumns);
+        if (targetIndex < 0) {
+            targetIndex = destIndex;
+        }
+        if (!this.isLeftDrop) {
+            targetIndex++;
+        }
+        columns.splice(srcIdx, 1);
+        if (destinationColumns === columns && srcIdx < targetIndex) {
+            targetIndex--;
+        }
+        destinationColumns.splice(targetIndex, 0, column);
+        this.cleanupEmptyParentColumn(parentColumn);
+    }
+
+    private reorderStackedColumnToRoot(destIndex: number, column: Column, parentColumn: Column, columns: Column[],
+                                       targetColumn: Column, targetParent: Column, srcIdx: number): void {
+        let targetIndex: number = inArray(targetColumn, this.parent.columns as Column[]);
+        if (targetIndex < 0) {
+            targetIndex = destIndex;
+        }
+        if (!this.isLeftDrop) {
+            targetIndex++;
+        }
+        columns.splice(srcIdx, 1);
+        const hierarchyColumns: Column[] = this.getColumnHierarchy(parentColumn);
+        let movedColumn: Column = column;
+        for (let i: number = 0; i < hierarchyColumns.length; i++) {
+            movedColumn = this.createStackedColumn(hierarchyColumns[parseInt(i.toString(), 10)], movedColumn);
+        }
+        (this.parent.columns as Column[]).splice(targetIndex, 0, movedColumn);
+        this.cleanupEmptyParentColumn(parentColumn);
+    }
+
+    private reorderBetweenStackedColumns(destIndex: number, column: Column, parentColumn: Column, columns: Column[],
+                                         targetColumn: Column, targetParent: Column, srcIdx: number): void {
+        const sourceColumnHierarchy: Column[] = this.getColumnHierarchy(parentColumn);
+        const targetColumnHierarchy: Column[] = this.getColumnHierarchy(targetParent);
+        let commonParent: Column;
+        commonParent = sourceColumnHierarchy.filter((column: Column) =>
+            targetColumnHierarchy.indexOf(column) > -1)[0];
+        if (!commonParent) {
+            commonParent = targetColumnHierarchy.filter((column: Column) =>
+                sourceColumnHierarchy.some((targetAncestor: Column) => targetAncestor.headerText === column.headerText))[0];
+        }
+        const destinationColumns: Column[] = parent && targetParent === parentColumn ? columns :
+            commonParent ? commonParent.columns as Column[] : this.parent.columns as Column[];
+        let destinationColumn: Column = targetColumn;
+        let destinationColumnParent: Column = targetParent;
+        while (destinationColumn && destinationColumnParent !== commonParent) {
+            destinationColumn = destinationColumnParent;
+            destinationColumnParent = this.getColParent(destinationColumn, (this.parent.columns as Column[]));
+        }
+        let targetIndex: number = destinationColumn ? inArray(destinationColumn, destinationColumns) : -1;
+        if (targetIndex < 0) {
+            targetIndex = destIndex;
+        }
+        if (!this.isLeftDrop) {
+            targetIndex++;
+        }
+        columns.splice(srcIdx, 1);
+        const hierarchyColumns: Column[] = [];
+        for (let i: number = 0; i < sourceColumnHierarchy.length; i++) {
+            if (commonParent && sourceColumnHierarchy[parseInt(i.toString(), 10)].headerText === commonParent.headerText) {
+                break;
             }
+            hierarchyColumns.push(sourceColumnHierarchy[parseInt(i.toString(), 10)]);
+        }
+        let movedColumn: Column = column;
+        for (let i: number = 0; i < hierarchyColumns.length; i++) {
+            movedColumn = this.createStackedColumn(hierarchyColumns[parseInt(i.toString(), 10)], movedColumn);
+        }
+        destinationColumns.splice(targetIndex, 0, movedColumn);
+        this.cleanupEmptyParentColumn(parentColumn);
+    }
+
+    private iterateStackedHeaders(columns: Column[]): void {
+        let i: number = 0;
+        while (i < columns.length) {
+            const current: Column = columns[parseInt(i.toString(), 10)];
+            if (current && current.columns) {
+                this.iterateStackedHeaders(current.columns as Column[]);
+            }
+            const next: Column = columns[parseInt((i + 1).toString(), 10)];
+            if (current && next && current.columns && next.columns && current.headerText === next.headerText) {
+                current.columns = [...(current.columns as Column[]), ...(next.columns as Column[])];
+                columns.splice(i + 1, 1);
+                continue;
+            }
+            i++;
         }
     }
 
@@ -245,13 +350,16 @@ export class Reorder implements IAction {
                 this.reorderStackedHeader(destIndex, column, parent, cols, targetColumn, targetParent, srcIdx);
             } else {
                 for (let i: number = 0; i < cols.length; i++) {
-                    if (cols[parseInt(i.toString(), 10)].field === column.field) {
+                    if (!isNullOrUndefined(column.field) && cols[parseInt(i.toString(), 10)].field === column.field) {
                         srcIdx = i;
                         break;
                     }
                 }
-                const col: Column =
-                    this.parent.getColumnByUid(this.destElement.querySelector('.e-headercelldiv').getAttribute('data-mappinguid'));
+                let col: Column;
+                if (this.destElement.querySelector('.e-headercelldiv')) {
+                    col =
+                        this.parent.getColumnByUid(this.destElement.querySelector('.e-headercelldiv').getAttribute('data-mappinguid'));
+                }
                 if (col) {
                     for (let i: number = 0; i < cols.length; i++) {
                         if (cols[parseInt(i.toString(), 10)].field === col.field) {
@@ -260,10 +368,8 @@ export class Reorder implements IAction {
                         }
                     }
                 } else {
-                    for (let i: number = 0; i < cols.length; i++) {
-                        if (cols[parseInt(i.toString(), 10)].headerText === (this.destElement as HTMLElement).innerText.trim()) {
-                            destIndex = i;
-                        }
+                    if (targetColumn) {
+                        destIndex = inArray(targetColumn, cols);
                     }
                 }
                 (cols as Column[]).splice(destIndex, 0, (cols as Column[]).splice(srcIdx, 1)[0] as Column);
@@ -273,7 +379,7 @@ export class Reorder implements IAction {
         }
         const args: FrozenReorderArgs = { column: column, destIndex: destIndex, columns: cols, parent: parent, cancel: false };
         gObj.notify(events.refreshFrozenColumns, args);
-        this.iterateStackedHeaders();
+        this.iterateStackedHeaders(this.parent.columns as Column[]);
         if (args.cancel) { return; }
         if (this.parent.isFrozenGrid()) {
             if (this.parent.frozenColumns) {
@@ -308,7 +414,7 @@ export class Reorder implements IAction {
             const cols: Column[] = this.parent.columns as Column[];
             this.idx = 0;
             this.refreshColumnIndex(cols);
-            this.parent.notify(events.refreshFrozenPosition, { });
+            this.parent.notify(events.refreshFrozenPosition, {});
         }
     }
 
@@ -320,6 +426,38 @@ export class Reorder implements IAction {
                 this.refreshColumnIndex(cols[parseInt(i.toString(), 10)].columns as Column[]);
             }
         }
+    }
+    private isDifferentParent(sourceColumn: Column, destinationColumn: Column): boolean {
+        const sourceParent: Column = this.getColParent(sourceColumn, this.parent.columns as Column[]);
+        const destParent: Column = this.getColParent(destinationColumn, this.parent.columns as Column[]);
+        if (!sourceParent || !destParent) {
+            return false;
+        }
+        const destParentColumn: Column = destParent;
+        if (sourceParent && !this.getColParent(sourceParent, this.parent.columns as Column[])) {
+            let current: Column = destParentColumn;
+            while (current) {
+                if (current.headerText === sourceParent.headerText && destParentColumn &&
+                    destParentColumn.headerText !== sourceParent.headerText) {
+                    return true;
+                }
+                current = this.getColParent(current, this.parent.columns as Column[]);
+            }
+        }
+        const sourceRootParent: Column = this.getColParent(sourceParent, this.parent.columns as Column[]);
+        const destRootParent: Column = this.getColParent(destParent, this.parent.columns as Column[]);
+        return !!(sourceRootParent && destRootParent &&
+            sourceRootParent.headerText === destRootParent.headerText && sourceParent.headerText !== destParent.headerText);
+    }
+
+    private getTopParentColumn(column: Column): Column {
+        let parent: Column = this.getColParent(column, this.parent.columns as Column[]);
+        let topParentColumn: Column = parent;
+        while (parent) {
+            topParentColumn = parent;
+            parent = this.getColParent(parent, this.parent.columns as Column[]);
+        }
+        return topParentColumn;
     }
 
     private targetParentContainerIndex(srcElem: Element, destElem: Element): number {
@@ -339,14 +477,16 @@ export class Reorder implements IAction {
         }
         const srcParent: Column = this.getColParent(srcColumn, this.parent.columns as Column[]);
         const destParent: Column = this.getColParent(destColumn, this.parent.columns as Column[]);
+        if ((!srcParent && destParent) || this.isDifferentParent(srcColumn, destColumn)) {
+            return -1;
+        }
+        const sourceTopColumn: Column = this.getTopParentColumn(srcColumn);
+        const destTopColumn: Column = this.getTopParentColumn(destColumn);
+        if (sourceTopColumn && destTopColumn && sourceTopColumn.headerText !== destTopColumn.headerText) {
+            return -1;
+        }
         if (srcParent && destParent && srcParent === destParent) {
             return inArray(destColumn, srcParent.columns as Column[]);
-        }
-        if (srcParent && destParent && srcParent.headerText !== destParent.headerText ||
-            (!srcParent && destParent && srcColumn.headerText !== destParent.headerText) ||
-            (srcParent && !destParent && srcParent.headerText === destColumn.headerText) || (!srcParent && destParent
-                && srcColumn.headerText === destParent.headerText)) {
-            return -1;
         }
         if (srcParent && !destParent) {
             return inArray(destColumn, cols);

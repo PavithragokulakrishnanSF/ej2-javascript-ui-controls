@@ -292,6 +292,14 @@ export class Data implements IDataProcessor {
         let predicateList: Predicate[] = [];
         let needForeignKeySearch: boolean = false;
         if (!isNullOrUndefined(this.parent.searchSettings.key) && this.parent.searchSettings.key.length) {
+            let filterComparer: Function | undefined;
+            for (const field of fields) {
+                const column: Column = this.parent.getColumnByField(field);
+                if (column && column.allowFormula) {
+                    filterComparer = (column.filterComparer as Function).bind(column);
+                    break;
+                }
+            }
             needForeignKeySearch = this.parent.getForeignKeyColumns().some((col: Column) => fields.indexOf(col.field) > -1);
             const adaptor: AdaptorOptions = !isForeignKey ? this.dataManager.adaptor : (fcolumn.dataSource as DataManager).adaptor;
             if (needForeignKeySearch || ((<{ getModuleName?: Function }>adaptor).getModuleName &&
@@ -304,7 +312,7 @@ export class Data implements IDataProcessor {
                     } else {
                         predicateList.push(new Predicate(
                             fields[parseInt(i.toString(), 10)], sSettings.operator, sSettings.key,
-                            sSettings.ignoreCase, sSettings.ignoreAccent
+                            sSettings.ignoreCase, sSettings.ignoreAccent, false, filterComparer
                         ));
                     }
                 }
@@ -312,7 +320,7 @@ export class Data implements IDataProcessor {
                 predList.key = sSettings.key;
                 query.where(predList);
             } else {
-                query.search(sSettings.key, fields, sSettings.operator, sSettings.ignoreCase, sSettings.ignoreAccent);
+                query.search(sSettings.key, fields, sSettings.operator, sSettings.ignoreCase, sSettings.ignoreAccent, filterComparer);
             }
         }
         return query;
@@ -334,6 +342,9 @@ export class Data implements IDataProcessor {
             const defaultFltrCols: PredicateModel[] = [];
             for (const col of columns) {
                 const gridColumn: Column = col.isForeignKey ? gObj.getColumnByUid(col.uid) : gObj.getColumnByField(col.field);
+                if (gridColumn && gridColumn.allowFormula && gridColumn.filterComparer) {
+                    col.filterComparer = gridColumn.filterComparer as Function;
+                }
                 if (isNullOrUndefined(col.type) && gridColumn && (gridColumn.type === 'date' || gridColumn.type === 'datetime' || gridColumn.type === 'dateonly')) {
                     col.type = col.isForeignKey ? gObj.getColumnByUid(col.uid).type : gObj.getColumnByField(col.field).type;
                 }

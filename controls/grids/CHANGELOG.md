@@ -8,6 +8,16 @@
 
 #### Features
 
+- Introduced `Advanced Filtering` support, enabling users to perform complex filtering operations through an integrated Query Builder displayed in a dialog. This provides an intuitive way to create and manage multiple filter conditions with ease.
+- Added `Formula Cell` support, allowing users to define formulas and perform calculations directly within Grid cells, similar to spreadsheet applications. This enhancement simplifies data computation and improves productivity.
+- Introduced a `Row Number` column feature that automatically displays sequential numbers for data rows, making it easier to identify, reference, and navigate records.
+- Added support for customizing `Header Row Height`, enabling greater control over header presentation and allowing header rows to better accommodate varying content and layout requirements.
+- Introduced `Empty Sticky Row` support, ensuring the empty row remains visible during horizontal scrolling. This enhancement provides a more consistent and seamless user experience when working with wide datasets.
+
+### Grid
+
+#### Features
+
 - `#FB71021` - The Grid now fully supports checkbox row selection when lazy-loaded grouping is enabled. Rows can be selected seamlessly across large grouped datasets, even beyond the visible viewport. This significantly improves usability and workflow efficiency when working with extensive grouped data.
 - The virtual scrolling has been significantly enhanced for smoothness. This ensures fluid vertical and horizontal transitions, providing a much smoother and more responsive experience during fast scrolling when `virtualization` is enabled.
 

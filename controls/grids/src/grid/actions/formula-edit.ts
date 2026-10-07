@@ -35,6 +35,8 @@ export class FormulaCellEditor implements IEditCell {
         if (this.parent.isDestroyed) { return; }
         if (this.editableDiv) {
             EventHandler.add(this.editableDiv, 'click', this.onEditableDivClick, this);
+            EventHandler.add(this.editableDiv, 'focusin', this.onEditableDivFocusIn, this);
+            EventHandler.add(this.editableDiv, 'focusout', this.onEditableDivFocusOut, this);
             EventHandler.add(this.editableDiv, 'input', this.onInputChange, this);
         }
         EventHandler.add(this.parent.element, 'click', this.onGridCellClick, this);
@@ -53,6 +55,8 @@ export class FormulaCellEditor implements IEditCell {
         }
         if (this.editableDiv) {
             EventHandler.remove(this.editableDiv, 'click', this.onEditableDivClick);
+            EventHandler.remove(this.editableDiv, 'focusin', this.onEditableDivFocusIn);
+            EventHandler.remove(this.editableDiv, 'focusout', this.onEditableDivFocusOut);
             EventHandler.remove(this.editableDiv, 'input', this.onInputChange);
         }
         EventHandler.remove(this.parent.element, 'click', this.onGridCellClick);
@@ -62,7 +66,7 @@ export class FormulaCellEditor implements IEditCell {
     public create(args: { column: Column, value: string, requestType: string }): Element {
         this.editableDiv = document.createElement('span');
         this.editableDiv.contentEditable = 'true';
-        this.editableDiv.className = 'e-field e-input e-ralign e-control e-formula-edit e-lib e-input-group e-control-wrapper e-valid-input e-input-focus';
+        this.editableDiv.className = 'e-field e-control e-formula-edit e-lib e-input-group e-control-wrapper e-valid-input';
         if (args.column.textAlign) {
             this.editableDiv.style.textAlign = args.column.textAlign;
         }
@@ -84,7 +88,11 @@ export class FormulaCellEditor implements IEditCell {
             const rowData: Object = args.rowData as Object;
             const value: string | number | boolean | Date | null | undefined = rowData[args.column.field];
             this.currentValue = value !== undefined && value !== null ? value.toString() : '';
-            const visualRowIndex: number = this.getVisualRowIndex(rowData);
+            const primaryKeyField: string = this.parent.getPrimaryKeyFieldNames()[0];
+            let visualRowIndex: number = this.parent.getRowIndexByPrimaryKey(rowData[`${primaryKeyField}`]);
+            if (this.parent.allowPaging && this.parent.pageSettings) {
+                visualRowIndex = ((this.parent.pageSettings.currentPage - 1) * this.parent.pageSettings.pageSize) + visualRowIndex;
+            }
             this.currentEditingRowNum = visualRowIndex + 1;
             if (this.currentValue.startsWith('=')) {
                 this.displayValue = this.convertFormulaToCellReference(this.currentValue, visualRowIndex);
@@ -93,14 +101,17 @@ export class FormulaCellEditor implements IEditCell {
             }
             this.renderColorizedFormula(this.displayValue);
             this.updateReferenceHighlight();
-            requestAnimationFrame(() => {
+            if (args.requestType === 'beginEdit') {
                 requestAnimationFrame(() => {
-                    if (this.editableDiv) {
-                        this.editableDiv.focus();
-                        this.setCursorPosition(this.displayValue.length);
-                    }
+                    requestAnimationFrame(() => {
+                        if (this.editableDiv) {
+                            this.editableDiv.focus();
+                            this.editableDiv.classList.add('e-input-focus');
+                            this.setCursorPosition(this.displayValue.length);
+                        }
+                    });
                 });
-            });
+            }
         }
     }
 
@@ -200,14 +211,18 @@ export class FormulaCellEditor implements IEditCell {
                                    const fieldName: string = columnLetterToField[columnLetter];
                                    if (fieldName) {
                                        const refRowNum: number = parseInt(rowNum, 10);
-                                       let rowReference: string = rowNum;
+                                       const dataSource: Object[] = this.parent.getDataModule().
+                                           dataManager.executeLocal(this.parent.getDataModule().generateQuery(true));
+                                       const primaryKeyField: string = this.parent.getPrimaryKeyFieldNames()[0];
+                                       let rowIndex: number | string  = parseInt(rowNum.toString(), 10);
+                                       rowIndex = dataSource[rowIndex - 1][`${primaryKeyField}`];
                                        if (rowDollar === '$') {
-                                           rowReference = `$${rowNum}`;
+                                           rowIndex = `$${rowIndex}`;
                                        } else if (!isNullOrUndefined(currentRowNum) && refRowNum !== currentRowNum) {
-                                           rowReference = `$${rowNum}`;
+                                           rowIndex = `$${rowIndex}`;
                                        }
                                        const colPrefix: string = colDollar === '$' ? '$' : '';
-                                       return `REF(COLUMN("${colPrefix}${fieldName}"),ROW(${rowReference}))`;
+                                       return `REF(COLUMN("${colPrefix}${fieldName}"),ROW(${rowIndex}))`;
                                    }
                                    return match;
                                });
@@ -230,16 +245,25 @@ export class FormulaCellEditor implements IEditCell {
                 fieldToColumnLetter[col.field] = getColumnLetter(i);
             }
         }
-        const currentRowNum: number = visualRowIndex !== undefined ? visualRowIndex + 1 : 1;
         return formula.replace(/REF\(COLUMN\(["']([^"']+)["']\),ROW\((\$*?)(\d+)\)\)/gi,
                                (match: string, fieldName: string, dollarPrefix: string, rowNum: string) => {
                                    const hasAbsoluteColumn: boolean = fieldName.charAt(0) === '$';
                                    const cleanFieldName: string = hasAbsoluteColumn ? fieldName.substring(1) : fieldName;
                                    // eslint-disable-next-line security/detect-object-injection
                                    const columnLetter: string = fieldToColumnLetter[cleanFieldName];
+                                   const currentRowNum: number = visualRowIndex !== undefined ? visualRowIndex + 1 : 1;
+                                   const dataSource: Object[] = this.parent.getDataModule().
+                                       dataManager.executeLocal(this.parent.getDataModule().generateQuery(true));
+                                   const primaryKeyField: string = this.parent.getPrimaryKeyFieldNames()[0];
+                                   const rowValue: number  = parseInt(rowNum.toString(), 10);
+                                   const primaryKeyValue: string | number = dataSource.findIndex((item: Object) => item[`${primaryKeyField}`] === rowValue);
+                                   if (primaryKeyValue === -1) {
+                                       return match;
+                                   }
+                                   const rowIndex: number = primaryKeyValue + 1;
                                    if (columnLetter) {
                                        if (dollarPrefix === '$') {
-                                           return hasAbsoluteColumn ? `$${columnLetter}$${rowNum}` : `${columnLetter}${rowNum}`;
+                                           return hasAbsoluteColumn ? `$${columnLetter}$${rowIndex}` : `${columnLetter}${rowIndex}`;
                                        } else {
                                            return `${columnLetter}${currentRowNum}`;
                                        }
@@ -256,8 +280,21 @@ export class FormulaCellEditor implements IEditCell {
     private onEditableDivClick(): void {
         if (this.editableDiv) {
             this.editableDiv.focus();
+            this.editableDiv.classList.add('e-input-focus');
             const curPosition: number = this.getCursorPositionInFormula();
             this.setCursorPosition(curPosition);
+        }
+    }
+
+    private onEditableDivFocusIn(e: MouseEvent): void {
+        if (this.editableDiv && !isNullOrUndefined(parentsUntil(e.target as HTMLElement, literals.addedRow))) {
+            this.editableDiv.classList.add('e-input-focus');
+        }
+    }
+
+    private onEditableDivFocusOut(e: MouseEvent): void {
+        if (this.editableDiv && !isNullOrUndefined(parentsUntil(e.target as HTMLElement, literals.addedRow))) {
+            this.editableDiv.classList.remove('e-input-focus');
         }
     }
 
@@ -331,7 +368,23 @@ export class FormulaCellEditor implements IEditCell {
                 }
             }
             if (tokenIndex === -1) {
-                this.parent.endEdit();
+                const prevChar: string = currentDisplay.charAt(Math.max(0, caret - 1));
+                const nextChar: string = currentDisplay.charAt(caret);
+                const isEndPosition: boolean = caret === currentDisplay.length;
+                const isAfterOperator: boolean = /[+\-*/×÷(,]/.test(prevChar);
+                const isInsideToken: boolean = /[A-Za-z0-9_$"]/.test(prevChar) || /[A-Za-z0-9_$"]/.test(nextChar);
+                if (!isEndPosition && !isAfterOperator && isInsideToken) {
+                    this.parent.endEdit();
+                    return;
+                }
+                const newDisplay: string = currentDisplay.slice(0, caret) + clickedRef + currentDisplay.slice(caret);
+                this.currentValue = newDisplay;
+                this.displayValue = newDisplay;
+                this.renderColorizedFormula(newDisplay);
+                this.updateReferenceHighlight();
+                requestAnimationFrame(() => {
+                    this.setCursorPosition(caret + clickedRef.length);
+                });
                 return;
             }
             // eslint-disable-next-line security/detect-object-injection
@@ -390,6 +443,9 @@ export class FormulaCellEditor implements IEditCell {
     private setCursorPosition(position: number): void {
         if (!this.editableDiv) {
             return;
+        }
+        if (this.editableDiv.childNodes.length === 0) {
+            this.editableDiv.appendChild(document.createTextNode(''));
         }
         const selection: Selection | null = window.getSelection();
         const range: Range = document.createRange();
@@ -487,29 +543,9 @@ export class FormulaCellEditor implements IEditCell {
         this.highlightedCells = [];
     }
 
-    /**
-     * Gets the visual row index in the current sorted/filtered view for the given row data.
-     *
-     * @param {Object} rowData - The row data to find the visual index for
-     * @returns {number} The visual row index in the current view (respects sorting and filtering)
-     * @hidden
-     */
-    private getVisualRowIndex(rowData: Object): number {
-        const currentViewRecords: Object[] = this.parent.getCurrentViewRecords();
-        const primaryKeyFields: string = this.parent.getPrimaryKeyFieldNames()[0];
-        const rowPrimaryKeyValue: string | number = rowData[`${primaryKeyFields}`];
-        for (let i: number = 0; i < currentViewRecords.length; i++) {
-            const record: Object = currentViewRecords[parseInt(i.toString(), 10)];
-            if (record[`${primaryKeyFields}`] === rowPrimaryKeyValue) {
-                return i;
-            }
-        }
-        return 0;
-    }
-
     private getPageRowIndex(index: number): number {
         if (this.parent.allowPaging && this.parent.pageSettings) {
-            return index % this.parent.pageSettings.pageSize;
+            return index - ((this.parent.pageSettings.currentPage - 1) * this.parent.pageSettings.pageSize);
         }
         return index;
     }

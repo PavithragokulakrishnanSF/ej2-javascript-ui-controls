@@ -1,12 +1,13 @@
 import { ComponentBase, gh, getProps, isExecute, vueDefineComponent, DefineVueComponent } from '@syncfusion/ej2-vue-base';
 import { isNullOrUndefined, getValue } from '@syncfusion/ej2-base';
+import { isUndefined } from '@syncfusion/ej2-base';
 
 import { FormRenderer, FormRendererModel } from '@syncfusion/ej2-form-renderer';
 import { CustomWidgetSettingsDirective, CustomWidgetSettingDirective, CustomWidgetSettingsPlugin, CustomWidgetSettingPlugin } from './customwidgetsettings.directive'
 
 
 export const properties: string[] = ['isLazyUpdate', 'plugins', 'className', 'customWidgetSettings', 'dataModel', 'enableHtmlSanitizer', 'enablePersistence', 'enableRtl', 'layout', 'locale', 'schema', 'buttonClick', 'change', 'created', 'failure', 'submit'];
-export const modelProps: string[] = [];
+export const modelProps: string[] = ['dataModel'];
 
 export const testProp: any = getProps({props: properties});
 export const props = testProp[0], watch = testProp[1], emitProbs: any = Object.keys(watch);
@@ -25,6 +26,7 @@ export let FormRendererComponent: DefineVueComponent<FormRendererModel> =  vueDe
     props: props,
     watch: watch,
     emits: emitProbs,
+    model: { event: 'modelchanged' },
     provide() { return { custom: this.custom } },
     data() {
         return {
@@ -40,7 +42,8 @@ export let FormRendererComponent: DefineVueComponent<FormRendererModel> =  vueDe
         }
     },
     created() {
-
+        this.ej2Instances._trigger = this.ej2Instances.trigger;
+        this.ej2Instances.trigger = this.trigger;
         this.bindProperties();
         this.ej2Instances._setProperties = this.ej2Instances.setProperties;
         this.ej2Instances.setProperties = this.setProperties;
@@ -89,7 +92,42 @@ export let FormRendererComponent: DefineVueComponent<FormRendererModel> =  vueDe
                     });
                 });
             }
+        },        
+        trigger(eventName: string, eventProp: {[key:string]:Object}, successHandler?: Function): void {
+            if(!isExecute) { this.models = !this.models ? this.ej2Instances.referModels : this.models }
+            if ((eventName === 'change' || eventName === 'input') && this.models && (this.models.length !== 0)) {
+                let key: string[] = this.models.toString().match(/checked|value/) || [];
+                let propKey: string = key[0];
+                if (eventProp && key && !isUndefined(eventProp[propKey])) {
+                    if (!isExecute) {
+                        this.ej2Instances.vueInstance.$emit('update:' + propKey, eventProp[propKey]);
+                        this.ej2Instances.vueInstance.$emit('modelchanged', eventProp[propKey]);
+                        this.ej2Instances.vueInstance.$emit('update:modelValue', eventProp[propKey]);
+                    } else {
+                        if (eventName === 'change' || ((this as any).$props && !(this as any).$props.isLazyUpdate)) {
+                            (this as any).$emit('update:'+ propKey, eventProp[propKey]);
+                            (this as any).$emit('modelchanged', eventProp[propKey]);
+                        }
+                    }
+                }
+            } else if ((eventName === 'actionBegin' && eventProp.requestType === 'dateNavigate') && this.models && (this.models.length !== 0)) {
+                let key: string[] = this.models.toString().match(/currentView|selectedDate/) || [];
+                let propKey: string = key[0];
+                if (eventProp && key && !isUndefined(eventProp[propKey])) {
+                    if (!isExecute) {
+                        this.ej2Instances.vueInstance.$emit('update:' + propKey, eventProp[propKey]);
+                        this.ej2Instances.vueInstance.$emit('modelchanged', eventProp[propKey]);
+                    } else {
+                        (this as any).$emit('update:'+ propKey, eventProp[propKey]);
+                        (this as any).$emit('modelchanged', eventProp[propKey]);
+                    }
+                }
+            }
+            if ((this.ej2Instances && this.ej2Instances._trigger)) {
+                this.ej2Instances._trigger(eventName, eventProp, successHandler); 
+            }
         },
+
         custom(): void {
             this.updated();
         },

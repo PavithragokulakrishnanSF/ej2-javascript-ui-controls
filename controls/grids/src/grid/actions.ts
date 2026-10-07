@@ -43,3 +43,4 @@ export * from './actions/lazy-load-group';
 export * from './actions/dom-virtualization';
 export * from './actions/formula';
 export * from './actions/formula-edit';
+export * from './actions/webmcp-adapter';

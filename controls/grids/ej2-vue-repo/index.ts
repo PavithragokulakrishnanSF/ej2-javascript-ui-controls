@@ -1,6 +1,7 @@
 /**
  * ej2 vue source
  */
+import * as workflowdesigner from './workflow-designer';
 import * as treemap from './treemap';
 import * as treegrid from './treegrid';
 import * as spreadsheet from './spreadsheet';
@@ -44,4 +45,4 @@ import * as buttons from './buttons';
 import * as blockeditor from './blockeditor';
 import * as base from './base';
 import * as barcodegenerator from './barcode-generator';
-export { treemap, treegrid, spreadsheet, splitbuttons, schedule, richtexteditor, richtexteditorui, ribbon, querybuilder, progressbar, popups, pivotview, pdfviewer, notifications, navigations, multicolumncombobox, markdowneditor, maps, lists, lineargauge, layouts, kanban, interactivechat, inputs, inplaceeditor, imageeditor, heatmap, grids, gantt, formrenderer, formbuilder, filemanager, dropdowns, documenteditor, diagrams, data, circulargauge, charts, calendars, buttons, blockeditor, base, barcodegenerator };
+export { workflowdesigner, treemap, treegrid, spreadsheet, splitbuttons, schedule, richtexteditor, richtexteditorui, ribbon, querybuilder, progressbar, popups, pivotview, pdfviewer, notifications, navigations, multicolumncombobox, markdowneditor, maps, lists, lineargauge, layouts, kanban, interactivechat, inputs, inplaceeditor, imageeditor, heatmap, grids, gantt, formrenderer, formbuilder, filemanager, dropdowns, documenteditor, diagrams, data, circulargauge, charts, calendars, buttons, blockeditor, base, barcodegenerator };

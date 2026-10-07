@@ -620,3 +620,7 @@ export const detachDetailTemplate: string = 'detach-detail-template';
 export const beforeSetPartialRecords: string = 'beforeSetPartialRecords';
 /** @hidden */
 export const applyDomVirtualRowHeight: string = 'apply-dom-virtual-row-height';
+/** @hidden */
+export const registerWebMcpTools: string = 'registerWebMcpTools';
+/** @hidden */
+export const getWebMcpTools: string = 'getWebMcpTools';

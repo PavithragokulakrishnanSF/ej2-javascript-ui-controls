@@ -7,13 +7,13 @@ import { Query, DataManager, DataUtil, DataOptions, UrlAdaptor, Predicate as Dat
 import { ItemModel, ClickEventArgs } from '@syncfusion/ej2-navigations';
 import { createSpinner, hideSpinner, showSpinner, Tooltip, DialogModel } from '@syncfusion/ej2-popups';
 import { RuleModel, QueryBuilderModel } from '@syncfusion/ej2-querybuilder';
-import { FormulaSettingsModel, GridModel, ResizeSettingsModel } from './grid-model';
+import { FormulaSettingsModel, GridModel, ResizeSettingsModel, GridWebMcpSettingsModel } from './grid-model';
 import { iterateArrayOrObject, prepareColumns, parentsUntil, wrap, templateCompiler, isGroupAdaptive, refreshForeignData, getScrollBarWidth, setEnableSeamlessScrolling } from './util';
 import { getRowHeight, setColumnIndex, Global, ispercentageWidth, getNumberFormat, getTransformValues } from './util';
 import { setRowElements, resetRowIndex, compareChanges, getCellByColAndRowIndex, performComplexDataOperation } from './util';
 import * as events from '../base/constant';
 import { ReturnType, BatchChanges, RowSelectable, PinRow, SetRowHeight } from '../base/type';
-import { IDialogUI, ScrollPositionType, ActionArgs, ExportGroupCaptionEventArgs, FilterUI, LazyLoadArgs, LoadEventArgs, ContextMenuClickEventArgs, ContextMenuOpenEventArgs, NotifyArgs, ExportHeaders, DetailTemplateDetachArgs, BeforeCustomFilterOpenEventArgs, AdvancedFilterOpenEventArgs, AdvancedFilterCloseEventArgs, AdvancedFilterBeginArgs, AdvancedFilterCompleteEventArgs } from './interface';
+import { IDialogUI, ScrollPositionType, ActionArgs, ExportGroupCaptionEventArgs, FilterUI, LazyLoadArgs, LoadEventArgs, ContextMenuClickEventArgs, ContextMenuOpenEventArgs, NotifyArgs, ExportHeaders, DetailTemplateDetachArgs, BeforeCustomFilterOpenEventArgs, AdvancedFilterOpenEventArgs, AdvancedFilterCloseEventArgs, AdvancedFilterBeginArgs, AdvancedFilterCompleteEventArgs, WebMcpToolExecuteEventArgs } from './interface';
 import {AggregateQueryCellInfoEventArgs, IGrid } from './interface';
 import { IRenderer, IValueFormatter, IFilterOperator, IIndex, RowDataBoundEventArgs, QueryCellInfoEventArgs } from './interface';
 import { CellDeselectEventArgs, CellSelectEventArgs, CellSelectingEventArgs, CellFocusEventArgs, ParentDetails, ContextMenuItemModel, FormulaDefinitionModel } from './interface';
@@ -34,6 +34,8 @@ import { Render } from '../renderer/render';
 import { Column, ColumnModel, ActionEventArgs } from '../models/column';
 import { SelectionType, GridLine, RenderType, SortDirection, SelectionMode, PrintMode, FilterType, FilterBarMode, FilterMode, FormulaCalculationMode } from './enum';
 import { CheckboxSelectionType, HierarchyGridPrintMode, NewRowPosition, ClipMode, freezeMode, IndicatorType } from './enum';
+import { getWebMcpTools, registerWebMcpTools } from '../base/constant';
+import { WebMcpTool } from './interface';
 import { WrapMode, ToolbarItems, ContextMenuItem, ColumnMenuItem, ToolbarItem, CellSelectionMode, EditMode, ResizeMode } from './enum';
 import { ColumnQueryModeType, RowRenderingDirection, AdaptiveMode, EmptyRecordMode } from './enum';
 import { Data } from '../actions/data';
@@ -91,6 +93,36 @@ import { Workbook } from '@syncfusion/ej2-excel-export';
 import { HeaderCellRenderer } from '../renderer/header-cell-renderer';
 import { VirtualContentRenderer } from '../renderer/virtual-content-renderer';
 import { CustomFunction, Formula, FormulaValue } from '../actions';
+import { WebMcpGrid } from '../actions';
+
+/**
+ * Configures the WebMCP settings for the Grid component.
+ */
+export class GridWebMcpSettings extends ChildProperty<GridWebMcpSettings> {
+    /**
+     * Specifies the name or prefix for the registered tools.
+     *
+     * @default null
+     */
+    @Property(null)
+    public name: string;
+
+    /**
+     * Specifies the list of tools to register. Can be an array of tool names (strings) or tool objects.
+     *
+     * @default null
+     */
+    @Property(null)
+    public tools: string[] | WebMcpTool[];
+
+    /**
+     * Specifies the list of allowed origins to expose the registered tools to.
+     *
+     * @default null
+     */
+    @Property(null)
+    public exposedTo: string[];
+}
 
 /**
  * Represents the field name and direction of sort column.
@@ -277,6 +309,12 @@ export class Predicate extends ChildProperty<Predicate> {
      */
     @Property()
     public ejpredicate: Object;
+
+    /**
+     * Defines the custom filter comparer function.
+     */
+    @Property()
+    public filterComparer: Function;
 
     /**
      * Defines the UID of filter column.
@@ -1395,6 +1433,13 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
      * @hidden
      */
     public advancedFilterModule: AdvancedFilter;
+
+    /**
+     * Provides the Web Mcp Grid module for applying the MCP Tools to the grid.
+     *
+     * @hidden
+     */
+    public webMcpGridModule: WebMcpGrid;
 
     /**
      * The `aggregateModule` is used to manipulate aggregate functionality in the Grid.
@@ -2998,6 +3043,14 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     public beforeAutoFill: EmitType<BeforeAutoFillEventArgs>;
 
     /**
+     * Triggers before executing the web Mcp Tools.
+     *
+     * @event beforeWebMcpToolExecute
+     */
+    @Event()
+    public beforeWebMcpToolExecute: EmitType<WebMcpToolExecuteEventArgs>;
+
+    /**
      * Triggers when the grid actions such as Sorting, Paging, Grouping etc., are done to get column `dataSource`.
      * In this event,the current view column data and total record count should be assigned to the column `dataSource` based
      * on the action performed.
@@ -3101,6 +3154,22 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
     public advancedFilterComplete: EmitType<AdvancedFilterCompleteEventArgs>;
 
     /**
+     * Specifies whether the WebMCP integration is enabled in the component.
+     *
+     * @default false
+     */
+    @Property(false)
+    public enableWebMcp: boolean;
+
+    /**
+     * Specifies the WebMCP settings for handling additional tools and configuration.
+     *
+     * @default {}
+     */
+    @Complex<GridWebMcpSettingsModel>({}, GridWebMcpSettings)
+    public webMcpSettings: GridWebMcpSettingsModel;
+
+    /**
      * Constructor for creating the component
      *
      * @param {GridModel} options - specifies the options
@@ -3169,6 +3238,13 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         this.setFrozenCount(); this.enableInfiniteAggrgate();
         const modules: ModuleDeclaration[] = [];
         if (this.isDestroyed) { return modules; }
+        if (this.enableWebMcp) {
+            modules.push({
+                member: 'webMcpGrid',
+                args: [this, this.serviceLocator],
+                name: 'WebMcpGrid'
+            });
+        }
         if (this.allowFiltering) {
             modules.push({
                 member: 'filter',
@@ -4688,6 +4764,8 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
                 removeClass([this.element], 'e-grid-min-height');
             }
             this.renderModule.refresh();
+            this.headerModule.refreshUI(); break;
+        case 'headerRowHeight':
             this.headerModule.refreshUI(); break;
         case 'gridLines':
             this.updateGridLines(); break;
@@ -6545,10 +6623,16 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         const cellRenderer: CellRenderer = new CellRenderer(this, this.serviceLocator);
         const formulaColumnIndexes: number[] = formulaColumns.map((column: Column) => this.getColumnIndexByField(column.field));
         const renderedRowElements: HTMLTableRowElement[] = this.getRows() as HTMLTableRowElement[];
+        const primaryKeyField: string = this.getPrimaryKeyFieldNames()[0];
         renderedRowElements.forEach((rowElement: HTMLTableRowElement) => {
             const rowObject: Row<Column> = this.getRowObjectFromUID(rowElement.getAttribute('data-uid'));
             if (rowObject) {
                 formulaColumnIndexes.forEach((columnIndex: number) => {
+                    const column: Column = this.getColumnByIndex(columnIndex);
+                    const value: FormulaValue = rowObject.data[column.field];
+                    if (typeof value === 'string' && value.trim().startsWith('=')) {
+                        this.setCellFormula(rowObject.data[`${primaryKeyField}`], column.field, value);
+                    }
                     const cellElement: HTMLTableCellElement = rowElement.cells[parseInt(columnIndex.toString(), 10)];
                     cellRenderer.refreshTD(cellElement, rowObject.cells[parseInt(columnIndex.toString(), 10)], rowObject.data,
                                            { index: columnIndex });
@@ -6591,12 +6675,18 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         const cellRenderer: CellRenderer = new CellRenderer(this, this.serviceLocator);
         const formulaColumnIndexes: number[] = formulaColumns.map((column: Column) => this.getColumnIndexByField(column.field));
         const renderedRowElements: HTMLTableRowElement[] = this.getRows() as HTMLTableRowElement[];
+        const primaryKeyField: string = this.getPrimaryKeyFieldNames()[0];
         if (rowIndex >= 0 && rowIndex < renderedRowElements.length) {
             const rowElement: HTMLTableRowElement = renderedRowElements[parseInt(rowIndex.toString(), 10)];
             const rowObject: Row<Column> = this.getRowObjectFromUID(rowElement.getAttribute('data-uid'));
             if (rowObject) {
                 formulaColumnIndexes.forEach((columnIndex: number) => {
                     const cellElement: HTMLTableCellElement = rowElement.cells[parseInt(columnIndex.toString(), 10)];
+                    const column: Column = this.getColumnByIndex(columnIndex);
+                    const value: FormulaValue = rowObject.data[column.field];
+                    if (typeof value === 'string' && value.trim().startsWith('=')) {
+                        this.setCellFormula(rowObject.data[`${primaryKeyField}`], column.field, value);
+                    }
                     cellRenderer.refreshTD(cellElement, rowObject.cells[parseInt(columnIndex.toString(), 10)], rowObject.data,
                                            { index: columnIndex });
                 });
@@ -8877,6 +8967,10 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         this.applyTextWrap();
         this.createTooltip(); //for clip mode ellipsis
         this.enableBoxSelection();
+        if (this.enableWebMcp) {
+            const settings: GridWebMcpSettingsModel = this.webMcpSettings || {};
+            this.notify(registerWebMcpTools, { prefix: settings.name, tools: settings.tools, exposedTo: settings.exposedTo });
+        }
     }
 
     public dataReady(): void {
@@ -9222,6 +9316,18 @@ export class Grid extends Component<HTMLElement> implements INotifyPropertyChang
         return (this.allowGrouping && this.groupSettings.columns.length && this.currentViewData.length
             && (<{ records?: Object[] }>this.currentViewData).records) ? (this.currentViewData as Object[] & { records: Object[] }).records
             : this.currentViewData;
+    }
+    	
+    /**
+     * Returns the WebMCP tool schemas for the given tool names.
+     *
+     * @param {string[]} toolNames - Optional list of tool names to filter. When omitted, all tool schemas are returned.
+     * @returns {WebMcpTool[]} An array of tool schema objects matching the specified names.
+     */
+    public getWebMcpTools(toolNames?: string[]): WebMcpTool[] {
+        const args: { toolNames?: string[]; tools?: WebMcpTool[] } = { toolNames };
+        this.notify(getWebMcpTools, args);
+        return args.tools || [];
     }
 
     private mouseClickHandler(e: MouseEvent & TouchEvent): void {

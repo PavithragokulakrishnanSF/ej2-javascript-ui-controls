@@ -742,6 +742,8 @@ export class CheckBoxFilterBase {
         let value: string;
         let fObj: PredicateModel;
         let coll: PredicateModel[] = [];
+        const moduleName: Function = (<{ getModuleName?: Function }>this.options.dataManager.adaptor).getModuleName;
+        const adaptorName: string = moduleName ? moduleName() : null;
         for (let i: number = 0; i < checkBoxChecked.length; i++) {
             value = this.values[parentsUntil(checkBoxChecked[parseInt(i.toString(), 10)], 'e-ftrchk').getAttribute('data-uid')];
             fObj = extend({}, { value: value }, defaults) as {
@@ -751,7 +753,7 @@ export class CheckBoxFilterBase {
                 fObj.operator = isNotEqual ? 'notequal' : 'equal';
             }
             if (value === '' || isNullOrUndefined(value)) {
-                coll = coll.concat(CheckBoxFilterBase.generateNullValuePredicates(defaults));
+                coll = coll.concat(CheckBoxFilterBase.generateNullValuePredicates(defaults, adaptorName));
             } else {
                 coll.push(fObj);
             }
@@ -768,6 +770,8 @@ export class CheckBoxFilterBase {
 
     private infiniteFltrBtnHandler(coll: PredicateModel[]): PredicateModel[] | void {
         let value: string;
+        const moduleName: Function = (<{ getModuleName?: Function }>this.options.dataManager.adaptor).getModuleName;
+        const adaptorName: string = moduleName ? moduleName() : null;
         if (this.infiniteManualSelectMaintainPred.length) {
             for (let i: number = 0; i < this.infiniteManualSelectMaintainPred.length; i++) {
                 const pred: PredicateModel = this.infiniteManualSelectMaintainPred[i as number];
@@ -777,7 +781,7 @@ export class CheckBoxFilterBase {
                         operator?: string, matchCase?: boolean, ignoreAccent?: boolean
                     } = { predicate: pred.predicate, field: pred.field, type: pred.type, uid: pred.uid, operator: pred.operator,
                         matchCase: pred.matchCase, ignoreAccent: pred.ignoreAccent };
-                    coll.push(...CheckBoxFilterBase.generateNullValuePredicates(dummyDefaults));
+                    coll.push(...CheckBoxFilterBase.generateNullValuePredicates(dummyDefaults, adaptorName));
                 } else {
                     coll.push(this.infiniteManualSelectMaintainPred[i as number]);
                 }
@@ -816,26 +820,27 @@ export class CheckBoxFilterBase {
         defaults: {
             predicate?: string, field?: string, type?: string, uid?: string
             operator?: string, matchCase?: boolean, ignoreAccent?: boolean
-        }
+        },
+        adaptorName?: string
     ): PredicateModel[] {
         const coll: PredicateModel[] = [];
+        const isODataV4: boolean = adaptorName === 'ODataV4Adaptor';
         if (defaults.type === 'string') {
-            coll.push(
-                {
-                    field: defaults.field, ignoreAccent: defaults.ignoreAccent, matchCase: defaults.matchCase,
-                    operator: defaults.operator, predicate: defaults.predicate, value: ''
-                });
-        }
-        coll.push(
-            {
-                field: defaults.field,
-                matchCase: defaults.matchCase, operator: defaults.operator, predicate: defaults.predicate, value: null
+            coll.push({
+                field: defaults.field, ignoreAccent: defaults.ignoreAccent, matchCase: defaults.matchCase,
+                operator: defaults.operator, predicate: defaults.predicate, value: ''
             });
-        coll.push(
-            {
+        }
+        coll.push({
+            field: defaults.field,
+            matchCase: defaults.matchCase, operator: defaults.operator, predicate: defaults.predicate, value: null
+        });
+        if (!(isODataV4 && defaults.type === 'string')) {
+            coll.push({
                 field: defaults.field, matchCase: defaults.matchCase, operator: defaults.operator,
                 predicate: defaults.predicate, value: undefined
             });
+        }
         return coll;
     }
 
@@ -972,9 +977,11 @@ export class CheckBoxFilterBase {
                     predicte = getDatePredicate(filterObj, this.options.type);
                 }
             }
+            const moduleName: Function = (<{ getModuleName?: Function }>this.options.dataManager.adaptor).getModuleName;
+            const adaptorName: string = moduleName ? moduleName() : null;
             if (val && typeof val === 'string' && this.isBlanks &&
                 this.getLocalizedLabel('Blanks').toLowerCase().indexOf((val as string).toLowerCase()) >= 0) {
-                coll = coll.concat(CheckBoxFilterBase.generateNullValuePredicates(defaults));
+                coll = coll.concat(CheckBoxFilterBase.generateNullValuePredicates(defaults, adaptorName));
                 const emptyValPredicte: Predicate = CheckBoxFilterBase.generatePredicate(coll);
                 emptyValPredicte.predicates.push(predicte);
                 predicte = emptyValPredicte;
@@ -1095,7 +1102,7 @@ export class CheckBoxFilterBase {
             }
             const moduleName: Function = (<{ getModuleName?: Function }>this.options.dataManager.adaptor).getModuleName;
             const isODataV4: boolean = moduleName && moduleName() === 'ODataV4Adaptor';
-            if (!args.query.distincts.length || this.infiniteRenderMod || (args.query.distincts.length && isODataV4)) {
+            if (!args.query.distincts.length || this.infiniteRenderMod || ( args.query.distincts.length && isODataV4)) {
                 this.customQuery = true;
                 this.queryGenerate(query);
             }
@@ -1629,7 +1636,15 @@ export class CheckBoxFilterBase {
         this.parent.notify(events.beforeCheckboxRendererQuery, { query: query });
         const result: Object[] = new DataManager(this.fullData as JSON[]).executeLocal(query);
         for (const res of result) {
-            this.result[getObject(this.options.field, res)] = true;
+            let value: string | number;
+            if (this.options && this.options.column && this.options.column.allowFormula) {
+                const primaryKeyField: string = (this.parent as IGrid).getPrimaryKeyFieldNames()[0];
+                const primaryKeyValue: string | number = res[`${primaryKeyField}`];
+                value = (this.parent as IGrid).getFormulaValue(primaryKeyValue, this.options.field) as string | number;
+            } else {
+                value = getObject(this.options.field, res);
+            }
+            this.result[`${value}`] = true;
         }
     }
 
@@ -2183,6 +2198,12 @@ export class CheckBoxFilterBase {
             !(isNullOrUndefined((checkboxFilter.parent as any).filterSettings.enableCaseSensitivity)) ? value.toLowerCase() : value;
             if (!(currentFilterValue in lookup)) {
                 const obj: Object = {};
+                if (column && column.allowFormula) {
+                    const primaryKeyField: string = (checkboxFilter.parent as any).getPrimaryKeyFieldNames()[0];
+                    const primaryKeyValue: string | number = json[parseInt(len.toString(), 10)][`${primaryKeyField}`];
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    value = (checkboxFilter.parent as any).getFormulaValue(primaryKeyValue, column.field);
+                }
                 obj[`${ejValue}`] = value;
                 lookup[`${currentFilterValue}`] = true;
                 if (isForeignKey) {
@@ -2224,7 +2245,7 @@ export class CheckBoxFilterBase {
             predicate = first.ejpredicate ? first.ejpredicate as Predicate :
                 new Predicate(
                     first.field, first.operator, first.value, !CheckBoxFilterBase.getCaseValue(first),
-                    first.ignoreAccent) as Predicate;
+                    first.ignoreAccent, false, first.filterComparer) as Predicate;
         }
         for (let p: number = 1; p < len; p++) {
             cols[parseInt(p.toString(), 10)] = CheckBoxFilterBase.updateDateFilter(cols[parseInt(p.toString(), 10)]);
@@ -2237,13 +2258,14 @@ export class CheckBoxFilterBase {
                     predicate.predicates.push(new Predicate(
                         cols[p as number].field, cols[parseInt(p.toString(), 10)].operator,
                         cols[parseInt(p.toString(), 10)].value, !CheckBoxFilterBase.getCaseValue(cols[parseInt(p.toString(), 10)]),
-                        cols[parseInt(p.toString(), 10)].ignoreAccent));
+                        cols[parseInt(p.toString(), 10)].ignoreAccent, false, cols[parseInt(p.toString(), 10)].filterComparer));
                 }
             } else {
                 if (cols[p as number].type === 'date' || cols[p as number].type === 'datetime' || cols[p as number].type === 'dateonly') {
                     predicate = (predicate[((cols[parseInt(p.toString(), 10)] as Predicate).predicate) as string] as Function)(
                         getDatePredicate(cols[parseInt(p.toString(), 10)], cols[parseInt(p.toString(), 10)].type),
-                        cols[parseInt(p.toString(), 10)].type, cols[parseInt(p.toString(), 10)].ignoreAccent);
+                        cols[parseInt(p.toString(), 10)].type, cols[parseInt(p.toString(), 10)].ignoreAccent, false,
+                        cols[parseInt(p.toString(), 10)].filterComparer);
                 } else {
                     predicate = cols[parseInt(p.toString(), 10)].ejpredicate ?
                         (predicate[(cols[parseInt(p.toString(), 10)] as Predicate)
@@ -2251,7 +2273,7 @@ export class CheckBoxFilterBase {
                         (predicate[(cols[parseInt(p.toString(), 10)].predicate) as string] as Function)(
                             cols[parseInt(p.toString(), 10)].field, cols[parseInt(p.toString(), 10)].operator,
                             cols[parseInt(p.toString(), 10)].value, !CheckBoxFilterBase.getCaseValue(cols[parseInt(p.toString(), 10)]),
-                            cols[parseInt(p.toString(), 10)].ignoreAccent);
+                            cols[parseInt(p.toString(), 10)].ignoreAccent, cols[parseInt(p.toString(), 10)].filterComparer);
                 }
             }
         }

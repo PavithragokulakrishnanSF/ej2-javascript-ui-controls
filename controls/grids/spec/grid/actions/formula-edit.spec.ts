@@ -983,5 +983,58 @@ describe('Formula Cell Edit Support for Autofill - Complete Coverage', () => {
         gridObj.addFormula('Double', (params: any) => {return Number(params.values[0]) * 2});
         gridObj.removeFormula('Double');
     });
+});
 
+describe('Formula Cell Edit Support for sorting and filtering', () => {
+    let gridObj: Grid;
+    beforeAll((done: Function) => {
+        gridObj = createGrid(
+            {
+                dataSource: [
+                    { id: 1, price: 10, qty: 2, total: '=REF(COLUMN("price"),ROW(1))*REF(COLUMN("qty"),ROW(1))', discount: 5, tax: 1.5 },
+                    { id: 2, price: 20, qty: 5, total: '=SUM(REF(COLUMN("price"),ROW(1)):REF(COLUMN("qty"),ROW(3)))', discount: 8, tax: 2.0 },
+                    { id: 3, price: 15, qty: 3, total: '=REF(COLUMN("price"),ROW(3))*REF(COLUMN("qty"),ROW(3))', discount: 3, tax: 1.2 },
+                    { id: 4, price: 25, qty: 4, total: '=REF(COLUMN("price"),ROW(4))*REF(COLUMN("qty"),ROW(4))', discount: 10, tax: 2.5 }
+                ],
+                columns: [
+                    { field: 'id', isPrimaryKey: true, headerText: 'ID' },
+                    { field: 'price', headerText: 'Price', type: 'number' },
+                    { field: 'qty', headerText: 'Quantity', type: 'number' },
+                    { field: 'discount', headerText: 'Discount', type: 'number' },
+                    { field: 'tax', headerText: 'Tax', type: 'number' },
+                    { field: 'total', headerText: 'Total', allowFormula: true, textAlign: 'Right' }
+                ],
+                enableAutoFill: true,
+                allowSorting: true,
+                allowFiltering: true,
+                selectionSettings:{mode: 'Cell', cellSelectionMode:'Box', type: 'Multiple'},
+                editSettings: { allowEditing: true, allowEditOnDblClick: true, mode: 'Cell' }
+            },
+            done
+        );
+    });
+
+    afterAll(() => {
+        destroy(gridObj);
+        gridObj = null;
+    });
+
+    it('sort the column', (done: Function) => {
+        let actionComplete = () => {
+            expect(gridObj.sortSettings.columns[0].field).toBe('total');
+            expect(gridObj.sortSettings.columns[0].direction).toBe('Ascending');
+            done();
+        }
+        gridObj.actionComplete = actionComplete;
+        (gridObj.getHeaderContent().querySelectorAll('.e-headercell')[5] as HTMLElement).click();
+    });
+
+    it('filter the column', (done: Function) => {
+        let actionComplete = (args?: Object): void => {
+            expect(gridObj.currentViewData.length).toBe(1);
+            done();
+        };
+        gridObj.actionComplete = actionComplete;
+        gridObj.filterByColumn('total', 'equal', 20, 'and', false);
+    });
 });

@@ -4,8 +4,8 @@ import { FileManager } from '@syncfusion/ej2-filemanager';
 import { Template } from '@syncfusion/ej2-angular-base';
 import { ToolbarItemsDirective } from './toolbaritems.directive';
 
-export const inputs: string[] = ['ajaxSettings','allowDragAndDrop','allowMultiSelection','contextMenuSettings','cssClass','detailsViewSettings','enableHtmlSanitizer','enablePersistence','enableRangeSelection','enableRtl','enableVirtualization','fileSystemData','height','largeIconsTemplate','locale','navigationPaneSettings','navigationPaneTemplate','path','popupTarget','rootAliasName','searchSettings','selectedItems','showFileExtension','showHiddenItems','showItemCheckBoxes','showThumbnail','sortBy','sortComparer','sortOrder','toolbarItems','toolbarSettings','uploadSettings','view','width'];
-export const outputs: string[] = ['beforeDelete','beforeDownload','beforeFolderCreate','beforeImageLoad','beforeMove','beforePopupClose','beforePopupOpen','beforeRename','beforeSend','created','delete','destroyed','failure','fileDragStart','fileDragStop','fileDragging','fileDropped','fileLoad','fileOpen','fileSelect','fileSelection','folderCreate','menuClick','menuClose','menuOpen','move','popupClose','popupOpen','rename','search','success','toolbarClick','toolbarCreate','uploadListCreate'];
+export const inputs: string[] = ['ajaxSettings','allowDragAndDrop','allowMultiSelection','contextMenuSettings','cssClass','detailsViewSettings','enableHtmlSanitizer','enablePersistence','enableRangeSelection','enableRtl','enableVirtualization','enableWebMcp','fileSystemData','height','largeIconsTemplate','locale','navigationPaneSettings','navigationPaneTemplate','path','popupTarget','rootAliasName','searchSettings','selectedItems','showFileExtension','showHiddenItems','showItemCheckBoxes','showThumbnail','sortBy','sortComparer','sortOrder','toolbarItems','toolbarSettings','uploadSettings','view','webMcpSettings','width'];
+export const outputs: string[] = ['beforeDelete','beforeDownload','beforeFolderCreate','beforeImageLoad','beforeMove','beforePopupClose','beforePopupOpen','beforeRename','beforeSend','beforeWebMcpToolExecute','created','delete','destroyed','failure','fileDragStart','fileDragStop','fileDragging','fileDropped','fileLoad','fileOpen','fileSelect','fileSelection','folderCreate','menuClick','menuClose','menuOpen','move','popupClose','popupOpen','rename','search','success','toolbarClick','toolbarCreate','uploadListCreate'];
 export const twoWays: string[] = [''];
 
 /**
@@ -40,6 +40,7 @@ export class FileManagerComponent extends FileManager implements IComponentBase 
 	declare beforePopupOpen: any;
 	declare beforeRename: any;
 	declare beforeSend: any;
+	declare beforeWebMcpToolExecute: any;
 	declare created: any;
 	declare delete: any;
 	declare destroyed: any;
@@ -110,6 +111,12 @@ export class FileManagerComponent extends FileManager implements IComponentBase 
             } catch { }
         try {
                 let mod = this.injector.get('FileManagerVirtualization');
+                if(this.injectedModules.indexOf(mod) === -1) {
+                    this.injectedModules.push(mod)
+                }
+            } catch { }
+        try {
+                let mod = this.injector.get('FileManagerWebMcpFileManager');
                 if(this.injectedModules.indexOf(mod) === -1) {
                     this.injectedModules.push(mod)
                 }

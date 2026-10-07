@@ -5,9 +5,10 @@ import { ICellFormatter, IFilterUI, IEditCell, CommandModel, IFilter, CommandBut
 import { TextAlign, ClipMode, Action, SortDirection, CommandButtonType, freezeDirection, freezeTable, EditType } from '../base/enum';
 import { PredicateModel } from '../base/grid-model';
 import { ValueFormatter } from '../services/value-formatter';
-import { ValueAccessor, SortComparer, HeaderValueAccessor } from '../base/type';
+import { ValueAccessor, SortComparer, HeaderValueAccessor, FilterComparer } from '../base/type';
 import { getUid, templateCompiler, getForeignData, getObject } from '../base/util';
 import { DropDownListModel } from '@syncfusion/ej2-dropdowns';
+import { FormulaValue } from '../actions/formula';
 
 /**
  * Represents Grid `Column` model class.
@@ -602,6 +603,55 @@ export class Column {
                 return this.sortDirection === 'Descending' ? DataUtil.fnDescending(x, y) : DataUtil.fnAscending(x, y);
             };
         }
+
+        if (!this.sortComparer && this.isFormulaColumn()) {
+            this.sortComparer = (x: string | number, y: string | number, xObj?: Object, yObj?: Object): number => {
+                let xValue: string | number = x;
+                let yValue: string | number = y;
+                if (xObj && yObj && this.parent) {
+                    const primaryKeyField: string | undefined = this.parent.getPrimaryKeyFieldNames()[0];
+                    if (primaryKeyField) {
+                        const xPrimaryKey: string | number = xObj[`${primaryKeyField}`] as string | number;
+                        const yPrimaryKey: string | number = yObj[`${primaryKeyField}`] as string | number;
+                        if (!isNullOrUndefined(xPrimaryKey) && !isNullOrUndefined(yPrimaryKey)) {
+                            const xFormulaValue: FormulaValue = typeof xValue === 'string' && xValue.trim().startsWith('=') ? this.parent.getFormulaValue(xPrimaryKey, this.field) : xValue;
+                            const yFormulaValue: FormulaValue = typeof yValue === 'string' && yValue.trim().startsWith('=') ? this.parent.getFormulaValue(yPrimaryKey, this.field) : yValue;
+                            xValue = xFormulaValue as string | number;
+                            yValue = yFormulaValue as string | number;
+                        } else {
+                            xValue = xObj[this.field];
+                            yValue = yObj[this.field];
+                        }
+                    }
+                }
+                return this.sortDirection === 'Descending' ? DataUtil.fnDescending(xValue, yValue)
+                    : DataUtil.fnAscending(xValue, yValue);
+            };
+        }
+
+        if (!this.filterComparer && this.isFormulaColumn()) {
+            this.filterComparer = (field: string, record: Object) => {
+                const column: Column = this.parent.getColumnByField(field);
+                if (column && column.allowFormula) {
+                    const primaryKeyField: string = this.parent.getPrimaryKeyFieldNames()[0];
+                    if (primaryKeyField) {
+                        const xPrimaryKey: string | number = record[`${primaryKeyField}`];
+                        const value: string | number = record[`${field}`];
+                        if (typeof value === 'string' && value.trim().startsWith('=')) {
+                            if (!isNullOrUndefined(xPrimaryKey)) {
+                                const xFormulaValue: FormulaValue = this.parent.getFormulaValue(xPrimaryKey, field);
+                                return xFormulaValue;
+                            }
+                        } else {
+                            return value;
+                        }
+                    }
+                } else {
+                    return DataUtil.getObject(field, record);
+                }
+                return undefined;
+            };
+        }
     }
 
     private formatFn: Function;
@@ -694,12 +744,26 @@ export class Column {
     public sortComparer: SortComparer | string;
 
     /**
+     * Defines the custom filter comparer function.
+     */
+    public filterComparer: FilterComparer;
+
+    /**
      * @returns {boolean} returns true for foreign column
      * @hidden
      * It defines the column is foreign key column or not.
      */
     public isForeignColumn(): boolean {
         return !!(this.dataSource && this.foreignKeyValue);
+    }
+
+    /**
+     * @returns {boolean} returns true for formula column
+     * @hidden
+     * It defines the column is formula column or not.
+     */
+    public isFormulaColumn(): boolean {
+        return this.allowFormula;
     }
 
     /**
@@ -1300,6 +1364,11 @@ export interface ColumnModel {
      * It defines the custom sort comparer function.
      */
     sortComparer?: SortComparer | string;
+
+    /**
+     * It defines the custom filter comparer function.
+     */
+    filterComparer?: FilterComparer;
 
     /**
      * @hidden

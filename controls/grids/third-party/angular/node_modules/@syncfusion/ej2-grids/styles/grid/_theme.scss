@@ -432,6 +432,9 @@
       tr.e-row:not(.e-disable-gridhover):not(.e-detailrow):hover {
         td.e-active.e-rowcell:not(.e-updatedtd),
         td.e-rowdragdropcell.e-active:not(.e-updatedtd),
+        td.e-pindentcell.e-active:not(.e-updatedtd),
+        td.e-detailrowexpand.e-active:not(.e-updated),
+        td.e-detailrowcollapse.e-active:not(.e-updated),
         td.e-rowcell:not(.e-cellselectionbackground):not(.e-active):not(.e-updatedtd):not(.e-indentcell).e-columnselection:hover,
         td.e-rowcell:not(.e-updatedtd):not(.e-indentcell).e-columnselection:hover {
           background: $grid-row-selection-hover-bg-color;

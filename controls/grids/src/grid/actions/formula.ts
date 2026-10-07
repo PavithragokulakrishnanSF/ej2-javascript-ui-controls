@@ -27,8 +27,8 @@ export interface Token {
 export interface EvaluationContext {
     getCell(reference: string): FormulaValue;
     getRange(startReference: string, endReference: string): FormulaValue[];
-    getRowData(rowIndex?: number): Record<string, FormulaValue>;
-    getFieldReference?(fieldName: string, rowIndex: number): string | undefined;
+    getRowData(rowIndex?: number | string): Record<string, FormulaValue>;
+    getFieldReference?(fieldName: string, rowIndex: number | string): string | undefined;
 }
 
 export interface AbsoluteFlags {
@@ -464,9 +464,10 @@ export class ReferenceConverter {
         return { col: columnIndex - 1, row: rowIndex - 1, isAbsolute: { col: isColumnAbsolute, row: isRowAbsolute } };
     }
 
-    public static convertIndexToReference(columnIndex: number, rowIndex: number): string {
-        if (columnIndex < 0 || rowIndex < 0) {
-            throw new ReferenceError(`Invalid indices: col=${columnIndex}, row=${rowIndex}`);
+    public static convertIndexToReference(columnIndex: number, rowIndex: number | string): string {
+        const index: number = parseInt(rowIndex.toString(), 10);
+        if (columnIndex < 0 || index < 0) {
+            throw new ReferenceError(`Invalid indices: col=${columnIndex}, row=${index}`);
         }
         let columnLetters: string = '';
         let adjustedColumnIndex: number = columnIndex + 1;
@@ -475,7 +476,7 @@ export class ReferenceConverter {
             columnLetters = String.fromCharCode(65 + (adjustedColumnIndex % 26)) + columnLetters;
             adjustedColumnIndex = Math.floor(adjustedColumnIndex / 26);
         }
-        return `${columnLetters}${rowIndex + 1}`;
+        return `${columnLetters}${index + 1}`;
     }
 
     public static adjustReferences(formula: string, rowOffset: number, columnOffset: number): string {
@@ -907,17 +908,15 @@ class Evaluator implements ASTVisitor {
                 throw new FormulaError(FormulaErrorCode.ERROR, 'REF requires 2 arguments: column reference and row number');
             }
             const columnReference: FormulaResult = node.args[0].accept(this) as FormulaResult;
-            const rowNumber: FormulaResult = node.args[1].accept(this) as FormulaResult;
+            const rowNumber: number | string = node.args[1].accept(this) as string | number;
             if (typeof columnReference !== 'string') {
                 throw new ReferenceError(`Cannot resolve REF(${columnReference}, ${rowNumber})`);
             }
-            const rowIndex: number = typeof rowNumber === 'number' ? (rowNumber > 0 ? rowNumber - 1 : rowNumber) :
-                this.convertToNumber(rowNumber) - 1;
-            const rowData: Record<string, FormulaValue> = (this.context as EvaluationContext).getRowData(rowIndex);
+            const rowData: Record<string, FormulaValue> = (this.context as EvaluationContext).getRowData(rowNumber);
             if (!rowData || !(columnReference in rowData) || rowData[columnReference as keyof typeof rowData] === undefined) {
                 throw new ReferenceError(`Cannot resolve REF(${columnReference}, ${rowNumber})`);
             }
-            const referenceText: string | undefined = (this.context as EvaluationContext).getFieldReference(columnReference, rowIndex);
+            const referenceText: string | undefined = (this.context as EvaluationContext).getFieldReference(columnReference, rowNumber);
             if (!referenceText) {
                 throw new ReferenceError(`Cannot resolve REF(${columnReference}, ${rowNumber})`);
             }
@@ -1557,7 +1556,9 @@ export class Formula implements IAction {
         }
         const parsedReference: ParsedReference = ReferenceConverter.parseReference(cellReference);
         const dataSource: Object[] = this.parent.getDataModule().dataManager.executeLocal(new Query());
-        const targetRowData: Record<string, FormulaValue> = dataSource[parsedReference.row] as Record<string, FormulaValue>;
+        const primaryKeyField: string = this.parent.getPrimaryKeyFieldNames()[0];
+        const index: number =  dataSource.findIndex((item: Object) => item[`${primaryKeyField}`] === parsedReference.row);
+        const targetRowData: Record<string, FormulaValue> = dataSource[parseInt(index.toString(), 10)] as Record<string, FormulaValue>;
         if (!targetRowData) {
             return undefined;
         }
@@ -1631,12 +1632,14 @@ export class Formula implements IAction {
             getRange: (startReference: string, endReference: string) =>
                 this.resolveRangeValues(startReference, endReference),
 
-            getRowData: (rowIndex?: number): Record<string, FormulaValue> => {
+            getRowData: (rowIndex?: number | string): Record<string, FormulaValue> => {
                 const dataSource: Object[] = this.parent.getDataModule().dataManager.executeLocal(new Query());
-                return dataSource[parseInt(rowIndex.toString(), 10)] as Record<string, FormulaValue>;
+                const primaryKeyField: string = this.parent.getPrimaryKeyFieldNames()[0];
+                const index: number =  dataSource.findIndex((item: Object) => item[`${primaryKeyField}`] === rowIndex);
+                return dataSource[parseInt(index.toString(), 10)] as Record<string, FormulaValue>;
             },
 
-            getFieldReference: (fieldName: string, rowIndex: number) => {
+            getFieldReference: (fieldName: string, rowIndex: number | string) => {
                 const dataColumns: Column[] = this.parent.getColumns().filter( (column: Column) =>
                     column && column.field !== undefined && column.field !== null);
                 const columnIndex: number = dataColumns.findIndex((column: Column) => column.field === fieldName);

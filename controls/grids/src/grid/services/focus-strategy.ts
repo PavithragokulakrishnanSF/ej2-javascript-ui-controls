@@ -1886,7 +1886,7 @@ export class ContentFocus implements IFocus {
          * if no child found then select the cell itself.
          * if Grid is in editable state, check for editable control inside child.
          */
-        return child.length ? isTemplate && child.length > 1 && !(this.parent.editSettings.mode === 'Batch'
+        return child.length ? isTemplate && child.length > 1 && !((this.parent.editSettings.mode === 'Batch' || this.parent.editSettings.mode === 'Cell')
             && this.parent.isEdit && this.target) ? this.target ? this.target : element : child[0] : element;
     }
 

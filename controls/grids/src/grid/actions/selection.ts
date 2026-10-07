@@ -757,7 +757,8 @@ export class Selection implements IAction {
         this.selectedRowIndexes = [];
         this.selectedRecords = [];
         this.selectRowIndex(-1);
-        if (this.isSingleSel() && !this.parent.isPersistSelection) {
+        if (this.isSingleSel() && !this.parent.isPersistSelection &&
+            !(this.parent.enableVirtualization || this.parent.enableInfiniteScrolling)) {
             this.selectedRowState = {};
         }
     }
@@ -2753,7 +2754,7 @@ export class Selection implements IAction {
         let isDrag: boolean;
         const gridElement: Element = parentsUntil(target, 'e-grid');
         if (gridElement && gridElement.id !== gObj.element.id || parentsUntil(target, literals.headerContent) && !this.parent.frozenRows ||
-            parentsUntil(target, 'e-editedbatchcell') || parentsUntil(target, literals.editedRow)) {
+            parentsUntil(target, 'e-editedbatchcell') || parentsUntil(target, literals.editedRow) || parentsUntil(target, literals.addedRow)) {
             return;
         }
         if (e.shiftKey || e.ctrlKey) {

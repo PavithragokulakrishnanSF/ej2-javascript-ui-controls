@@ -7,7 +7,7 @@ import { Column, ColumnModel } from '../models/column';
 import {
     SortSettingsModel, TextWrapSettingsModel, SelectionSettingsModel,
     FilterSettingsModel, SearchSettingsModel, InfiniteScrollSettingsModel, ResizeSettingsModel,
-    DomVirtualizationSettingsModel, AdvancedFilterSettingsModel, FormulaSettingsModel
+    DomVirtualizationSettingsModel, AdvancedFilterSettingsModel, FormulaSettingsModel, GridWebMcpSettingsModel
 } from './grid-model';
 import { PageSettingsModel, AggregateRowModel, ColumnChooserSettingsModel } from '../models/models';
 import { RowDropSettingsModel, GroupSettingsModel, GridModel, EditSettingsModel, LoadingIndicatorModel } from './grid-model';
@@ -54,6 +54,7 @@ import { Reorder } from '../actions/reorder';
 import { ContextMenu } from '../actions/context-menu';
 import { FilterMenuRenderer } from '../renderer/filter-menu-renderer';
 import { ColumnChooser, Search } from '../..';
+import { WebMcpGrid } from '../actions/webmcp-adapter';
 
 /**
  * Specifies grid interfaces.
@@ -65,6 +66,20 @@ export interface IGrid extends Component<HTMLElement> {
     //public properties
     currentViewData?: Object[];
     currentAction?: ActionArgs;
+
+    /**
+     * Specifies whether the WebMCP integration is enabled in the component.
+     *
+     * @default false
+     */
+    enableWebMcp?: boolean;
+
+    /**
+     * Specifies the WebMCP settings for handling additional tools and configuration.
+     *
+     * @default {}
+     */
+    webMcpSettings?: GridWebMcpSettingsModel;
 
     /**
      * @hidden
@@ -799,6 +814,8 @@ export interface IGrid extends Component<HTMLElement> {
 
     columnChooserModule?: ColumnChooser;
 
+    webMcpGridModule?: WebMcpGrid;
+
     expandedRows?: { [index: number]: IExpandedRow };
     registeredTemplate?: Object;
     lockcolPositionCount?: number;
@@ -881,6 +898,7 @@ export interface IGrid extends Component<HTMLElement> {
     getCellFormula?(primaryKeyValue: string | number, field: string): string;
     setCellFormula?(primaryKeyValue: string | number, field: string, formula: string): void;
     getFormulaValue?(primaryKeyValue: string | number, field: string): FormulaValue | undefined;
+    getWebMcpTools?(toolNames?: string[]): WebMcpTool[];
     refreshFormulas?(): void;
     suspendFormulaRefresh?(): void;
     resumeFormulaRefresh?(): void;
@@ -3737,4 +3755,73 @@ export interface FormulaDefinitionModel {
     field: string;
     formula: string;
     value?: FormulaValue;
+}
+
+/**
+ * Defines the structure of a WebMCP tool, including its name, description,
+ * and input/output JSON schemas used for tool registration and execution.
+ */
+export interface WebMcpTool {
+    /**
+     * The unique identifier name of the WebMCP tool (e.g., 'editCell', 'getCellData').
+     */
+    name: string;
+    /**
+     * A description of the tool's functionality and purpose.
+     */
+    description: string;
+    /**
+     * The JSON schema object that defines the expected input parameters for the tool.
+     */
+    inputSchema: object;
+    /**
+     * The JSON schema object that defines the structure of the tool's output response.
+     */
+    outputSchema: object;
+    /**
+     * A readOnlyHint flag indicating whether the tool performs read-only operations without modifying state.
+     */
+    annotations: object;
+    /**
+     * A function that executes the tool's logic when invoked.
+     */
+    execute?: Function;
+}
+
+/**
+ * Defines the result returned by a WebMCP tool execution,
+ * containing the response content array and an optional error flag.
+ *
+ * @hidden
+ */
+export interface WebMcpToolResponse {
+    content: { type: string; text: string }[];
+    isError?: boolean;
+}
+
+/**
+ * Defines the event arguments for the `beforeWebMcpToolExecute` event.
+ */
+export interface WebMcpToolExecuteEventArgs {
+    /**
+     * Specifies whether the tool execution should be cancelled.
+     */
+    cancel?: boolean;
+    /**
+     * Specifies the name of the WebMCP tool being executed (e.g. \`'editCell'\`, \`'getCellData'\`).
+     */
+    toolName?: string;
+    /**
+     * Specifies the arguments passed to the tool.
+     */
+    toolArgs?: object;
+    /**
+     * Set to \`true\` to display a confirmation dialog to the user before the tool executes.
+     */
+    showConfirmationDialog?: boolean;
+    /**
+     * Specifies a custom response message to send back to the AI when tool execution is cancelled,
+     * either by setting \`cancel\` to \`true\` or when the user dismisses the confirmation dialog.
+     */
+    cancellationResponse?: string;
 }

@@ -5,7 +5,7 @@ import { isUndefined } from '@syncfusion/ej2-base';
 import { RichTextEditorUI, RichTextEditorUIModel } from '@syncfusion/ej2-richtexteditor-ui';
 
 
-export const properties: string[] = ['isLazyUpdate', 'plugins', 'backgroundColor', 'cssClass', 'enable', 'enablePersistence', 'enableRtl', 'fontColor', 'fontFamily', 'fontSize', 'format', 'height', 'htmlAttributes', 'imageSettings', 'interactionSettings', 'keyBindings', 'linkSettings', 'listSettings', 'locale', 'placeholder', 'quickToolbarSettings', 'readonly', 'saveInterval', 'slashCommandSettings', 'tableSettings', 'toolbarSettings', 'undoRedoSteps', 'undoRedoTimer', 'value', 'valueFormat', 'width', 'actionBegin', 'actionComplete', 'blurred', 'change', 'created', 'destroyed', 'focused', 'itemClick', 'slashCommanditemSelect', 'updatedToolbarStatus', 'beforeDialogClose', 'beforeDialogOpen', 'beforeFileDrop', 'beforeFileUpload', 'beforePopupClose', 'beforePopupOpen', 'fileRemoving', 'fileSelected', 'fileUploadFailed', 'fileUploadSuccess', 'fileUploading', 'resize', 'resizeStop', 'resizing'];
+export const properties: string[] = ['isLazyUpdate', 'plugins', 'backgroundColor', 'cssClass', 'enable', 'enablePersistence', 'enableRtl', 'fontColor', 'fontFamily', 'fontSize', 'format', 'height', 'htmlAttributes', 'imageSettings', 'interactionSettings', 'keyBindings', 'linkSettings', 'listSettings', 'locale', 'placeholder', 'quickToolbarSettings', 'readonly', 'saveInterval', 'slashCommandSettings', 'tableSettings', 'toolbarSettings', 'undoRedoSteps', 'undoRedoTimer', 'value', 'valueFormat', 'width', 'actionBegin', 'actionComplete', 'beforeDialogClose', 'beforeDialogOpen', 'beforeFileDrop', 'beforeFileUpload', 'beforePopupClose', 'beforePopupOpen', 'blur', 'change', 'created', 'destroyed', 'fileRemoving', 'fileSelected', 'fileUploadFailed', 'fileUploadSuccess', 'fileUploading', 'focus', 'resize', 'resizeStop', 'resizing'];
 export const modelProps: string[] = ['value'];
 
 export const testProp: any = getProps({props: properties});
@@ -130,9 +130,6 @@ export let RichTextEditorUIComponent: DefineVueComponent<RichTextEditorUIModel> 
         custom(): void {
             this.updated();
         },
-        blur(): void {
-            return this.ej2Instances.blur();
-        },
         closeDialog(type: Object): void {
             return this.ej2Instances.closeDialog(type);
         },
@@ -142,8 +139,11 @@ export let RichTextEditorUIComponent: DefineVueComponent<RichTextEditorUIModel> 
         destroy(): void {
             return this.ej2Instances.destroy();
         },
-        focus(): void {
-            return this.ej2Instances.focus();
+        focusIn(): void {
+            return this.ej2Instances.focusIn();
+        },
+        focusOut(): void {
+            return this.ej2Instances.focusOut();
         },
         getDocument(): Object | null {
             return this.ej2Instances.getDocument();
@@ -194,11 +194,11 @@ export type RichTextEditorUIComponent = typeof ComponentBase & {
     trigger(eventName: string, eventProp: {
         [key: string]: Object;
     }, successHandler?: Function): void;
-    blur(): void;
     closeDialog(type: Object): void;
     commands(): Object;
     destroy(): void;
-    focus(): void;
+    focusIn(): void;
+    focusOut(): void;
     getDocument(): Object | null;
     getHtml(): string;
     getText(): string;

@@ -311,7 +311,7 @@
         float: left;
       }
 
-      &:not(.sf-grid) .e-dragclone{
+      &:not(.sf-grid) .e-draganddrop.e-dragclone {
         transform: translateX(-100%);
       }
     }
@@ -4680,18 +4680,36 @@
 }
 
 /* Formula Editor Styles */
-.e-formula-edit {
-  align-items: center;
-  border-bottom: 1px solid;
-  border-radius: calc(var(--e-radius) * .25);
-  box-shadow: 0 0 0 1px var(--color-sf-primary);
-  display: flex;
-  height: $formula-edit-normal-height;
-  padding-left: 8px;
-  width: 100%;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+.e-grid tr.e-row td.e-rowcell {
+  .e-formula-edit.e-field.e-input.e-input-group {
+    display: block;
+    height: $formula-edit-normal-height;
+    padding-left: $formula-edit-padding-left;
+    width: 100%;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding-top: $formula-edit-padding-top;
+
+    &.e-ralign {
+      padding-right: $formula-edit-padding-right;
+    }
+  }
+  &.e-formula-error {
+    position: relative;
+  }
+  &.e-formula-error::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 12px;
+    height: 12px;
+    background: $formula-error-background;
+    transform: rotate(45deg);
+    pointer-events: none;
+    z-index: 1;
+  }
 }
 
 .e-col-hidden {

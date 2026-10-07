@@ -740,6 +740,9 @@ export class InfiniteScroll implements IAction {
     }
 
     private calculateAutoPageSize(): void {
+        if (this.parent.height && typeof this.parent.height === 'string' && this.parent.height.toLowerCase().indexOf('calc') !== -1) {
+            return;
+        }
         const rowHeight: number = this.parent.getRowHeight();
         let availableHeight: string | number = this.parent.height.toString().indexOf('%') < 0 ? this.parent.height :
             this.parent.element.getBoundingClientRect().height;

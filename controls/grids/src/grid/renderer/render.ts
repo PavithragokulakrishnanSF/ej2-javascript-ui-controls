@@ -695,6 +695,21 @@ export class Render {
                     }
                 }
             }
+            const formulaColumns: Column[] = gObj.getColumns().filter((col: Column) => col.allowFormula);
+            if (formulaColumns.length) {
+                const dataSource: Object[] = gObj.getDataModule().dataManager.executeLocal(gObj.getDataModule().generateQuery(true));
+                const primaryKey: string = gObj.getPrimaryKeyFieldNames()[0];
+                for (const record of dataSource) {
+                    if (isNullOrUndefined(record)) { continue; }
+                    const primaryIndex: string | number = (<{ [key: string]: string | number }>record)[`${primaryKey}`];
+                    for (const col of formulaColumns) {
+                        const value: string = <string>(<{ [key: string]: string }>record)[`${col.field}`];
+                        if (typeof value === 'string' && value.trim().startsWith('=')) {
+                            gObj.setCellFormula(primaryIndex, col.field, value);
+                        }
+                    }
+                }
+            }
             const requestTypes: string[] = ['virtualscroll', 'infiniteScroll', 'grouping', 'paging', 'sorting', 'filtering'];
             if (gObj.isRowPinned && (!gObj.isInitialLoad || (gObj.getDataModule().isRemote() && args.requestType
                 && requestTypes.indexOf(args.requestType) !== -1))) {
